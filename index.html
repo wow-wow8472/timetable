@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 Winter Master</title>
+    <style>
+        :root {
+            --bg: #fdfdfd;
+            --math-br: #e3f2fd; --math-ryu: #e0f2f1;
+            --math-dw: #f3e5f5; --math-ws: #e8eaf6;
+            --phys-sol: #fff3e0; --phys-br: #ffebee;
+            --algo-hc: #e8f5e9; --algo-os: #f1f8e9;
+            --holiday: #fffde7;
+            --now-line: #ff4d4d;
+        }
+        body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; }
+        header { background: #222; color: white; padding: 15px; text-align: center; font-weight: bold; }
+        
+        .section { display: none; padding: 15px; }
+        .section.active { display: block; }
+
+        .dashboard { background: white; border-radius: 15px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #eee; }
+        
+        /* [설정 유지] 가로 스크롤 영역 - 글씨가 찌부러지는 것을 방지 */
+        .timeline-scroll-area { 
+            width: 100%; 
+            overflow-x: auto; 
+            border: 1px solid #eee; 
+            border-radius: 8px;
+        }
+        .timeline-container { 
+            position: relative; 
+            height: 600px; 
+            min-width: 450px; /* 창이 좁아져도 칸 너비 유지 */
+            background: white; 
+            overflow-y: auto;
+        }
+
+        .now-indicator { position: absolute; left: 0; right: 0; height: 2px; background: var(--now-line); z-index: 20; display: none; pointer-events: none; }
+
+        /* [설정 유지] 글씨가 칸 안에서 줄바꿈되게 처리 */
+        .ev { 
+            position: absolute; left: 4px; right: 4px; padding: 4px 6px; border-radius: 6px; 
+            font-size: 11px; line-height: 1.2; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            display: flex; flex-direction: column; border-left: 3px solid rgba(0,0,0,0.1);
+            z-index: 5;
+            word-break: keep-all; 
+            overflow: hidden;
+        }
+        .ev b { font-size: 11px; margin-bottom: 2px; display: block; color: inherit; }
+        .ev span { font-size: 10px; font-weight: bold; opacity: 0.8; }
+
+        .ev.half-left { right: 51% !important; }
+        .ev.half-right { left: 51% !important; }
+
+        .calendar-wrapper { width: 100%; overflow-x: auto; border-radius: 8px; }
+        .grid-container { 
+            display: grid; 
+            grid-template-columns: repeat(7, minmax(110px, 1fr)); 
+            background: #eee; 
+            min-width: 800px; 
+        }
+        .day-header { background: #f8f9fa; padding: 10px; text-align: center; font-weight: bold; font-size: 12px; }
+        .day-cell { background: white; height: 450px; position: relative; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
+        .day-num { padding: 5px; font-weight: bold; font-size: 11px; }
+
+        .math-br { background: var(--math-br); color: #0d47a1; }
+        .math-ryu { background: var(--math-ryu); color: #00695c; }
+        .math-dw { background: var(--math-dw); color: #4a148c; }
+        .math-ws { background: var(--math-ws); color: #1a237e; }
+        .phys-sol { background: var(--phys-sol); color: #e65100; }
+        .phys-br { background: var(--phys-br); color: #b71c1c; }
+        .algo-hc { background: var(--algo-hc); color: #1b5e20; }
+        .algo-os { background: var(--algo-os); color: #33691e; }
+        .hldy { background: var(--holiday); color: #854d0e; text-align: center; font-weight: bold; font-size: 10px; }
+
+        .nav-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .menu-btn { background: white; border: 1px solid #ddd; padding: 20px; border-radius: 12px; font-weight: bold; cursor: pointer; }
+        .back-btn { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<header>2026 Winter Master</header>
+
+<section id="home-section" class="section active">
+    <div class="dashboard">
+        <h2 id="todayDate">오늘의 시간표</h2>
+        <div class="timeline-scroll-area">
+            <div class="timeline-container" id="todayTimeline">
+                <div id="nowLineHome" class="now-indicator"></div>
+            </div>
+        </div>
+    </div>
+    <div class="nav-grid">
+        <button class="menu-btn" onclick="openSchedule()">🗓️ 전체 달력 보기</button>
+        <button class="menu-btn" onclick="openTodo()">✅ 할 일 목록</button>
+    </div>
+</section>
+
+<section id="schedule-section" class="section">
+    <button class="back-btn" onclick="goHome()">🏠 홈으로</button>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+        <button onclick="renderCalendar(1)" style="padding:8px 15px;">1월</button>
+        <button onclick="renderCalendar(2)" style="padding:8px 15px;">2월</button>
+        <strong id="monthTitle" style="font-size: 1.2rem; margin-left: 10px;"></strong>
+    </div>
+    <div class="calendar-wrapper">
+        <div class="grid-container" id="calendarGrid"></div>
+    </div>
+</section>
+
+<section id="todo-section" class="section">
+    <button class="back-btn" onclick="goHome()">🏠 홈으로</button>
+    <div class="dashboard">
+        <h2>📋 To-do List</h2>
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <input type="text" id="todoInput" style="flex:1; padding:12px; border:1px solid #ddd; border-radius:8px;" placeholder="할 일을 입력하세요">
+            <button onclick="addTodo()" style="padding:0 20px; background:#222; color:white; border:none; border-radius:8px;">추가</button>
+        </div>
+        <div id="todoList"></div>
+    </div>
+</section>
+
+<script>
+    const baseSchedule = {
+        1: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol', p:'half-left'}, {n:'물리(브밸)장재필', s:'19:20', e:'22:10', h:19.33, dur:2.8, c:'phys-br', p:'half-right'}],
+        2: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'한컴 알고리즘', s:'13:00', e:'14:50', h:13, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}],
+        3: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol'}],
+        4: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'미적(브밸)류우성', s:'13:00', e:'16:00', h:13, dur:3, c:'math-ryu'}, {n:'미적(원솔)김기현', s:'18:00', e:'22:00', h:18, dur:4, c:'math-ws'}],
+        5: [{n:'원솔 알고리즘', s:'09:30', e:'13:30', h:9.5, dur:4, c:'algo-os'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'17:00', e:'18:50', h:17, dur:1.8, c:'algo-hc'}],
+        6: [{n:'확통(다원)김찬용', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-dw', p:'half-left'}, {n:'미적(브밸)류우성', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-ryu', p:'half-right'}, {n:'물리(브밸)양기선', s:'16:00', e:'19:00', h:16, dur:3, c:'phys-br'}]
+    };
+
+    function formatTime12(hStr) {
+        let [h, m] = hStr.split(':'); h = parseInt(h);
+        const period = h >= 12 ? '오후' : '오전';
+        const h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+        return `${period} ${h12}:${m}`;
+    }
+
+    function getDaySchedule(m, d) {
+        const dateObj = new Date(2026, m - 1, d);
+        const day = dateObj.getDay();
+
+        if (m === 2) {
+            // 2/12(목): 장세욱 빠지고 학교등교 일정도 추가
+            if (d === 12) {
+                let s = baseSchedule[4].filter(ev => !ev.n.includes('장세욱'));
+                s.push({n:'학교 등교', s:'08:00', e:'15:30', h:8, dur:4.5, c:'hldy'});
+                return s;
+            }
+            // 2/16(월), 2/18(수): 연휴 중 이정욱 수업만 진행
+            if (d === 16 || d === 18) return baseSchedule[day].filter(ev => ev.n.includes('이정욱'));
+            // 2/17(화): 설날 당일 전면 휴강
+            if (d === 17) return [];
+            // 2/21(토): 류우성 수업 없음
+            if (d === 21) return baseSchedule[6].filter(ev => !ev.n.includes('류우성'));
+            // 2/23(월): 장재필 수업 없음
+            if (d === 23) return baseSchedule[1].filter(ev => !ev.n.includes('장재필'));
+            // 2/28(토): 류우성 & 양기선 수업 없음
+            if (d === 28) return baseSchedule[6].filter(ev => !ev.n.includes('류우성') && !ev.n.includes('양기선'));
+        }
+
+        if (m === 3 && d <= 3) return []; // 3월 초 시업식 기간 비움
+        return baseSchedule[day] || [];
+    }
+
+    window.onload = function() { updateHomeDashboard(); loadTodos(); setInterval(updateNowLine, 30000); };
+
+    function updateHomeDashboard() {
+        const now = new Date(); const m = now.getMonth() + 1; const d = now.getDate();
+        document.getElementById('todayDate').innerText = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }) + " 일정";
+        const container = document.getElementById('todayTimeline');
+        container.querySelectorAll('.ev').forEach(e => e.remove());
+        const dailyData = getDaySchedule(m, d);
+        dailyData.forEach(ev => {
+            const top = (ev.h - 6) * 38 + 20; 
+            const div = document.createElement('div');
+            div.className = `ev ${ev.c} ${ev.p || ''}`;
+            div.style = `top:${top}px; height:${ev.dur * 38}px;`;
+            div.innerHTML = `<b>${ev.n}</b><span>${formatTime12(ev.s)} - ${formatTime12(ev.e)}</span>`;
+            container.appendChild(div);
+        });
+        updateNowLine();
+    }
+
+    function updateNowLine() {
+        const now = new Date(); const h = now.getHours() + now.getMinutes() / 60;
+        const line = document.getElementById('nowLineHome');
+        if (h >= 6 && h <= 24) { line.style.top = (h - 6) * 38 + 20 + 'px'; line.style.display = 'block'; }
+        else { line.style.display = 'none'; }
+    }
+
+    function renderCalendar(m) {
+        const grid = document.getElementById('calendarGrid');
+        document.getElementById('monthTitle').innerText = `${m}월`;
+        grid.innerHTML = '';
+        ['일','월','화','수','목','금','토'].forEach(d => grid.innerHTML += `<div class="day-header">${d}</div>`);
+        const first = new Date(2026, m-1, 1).getDay();
+        const last = new Date(2026, m, 0).getDate();
+        for(let i=0; i<first; i++) grid.innerHTML += `<div class="day-cell"></div>`;
+        for(let d=1; d<=last; d++) {
+            let html = `<div class="day-num">${d}</div>`;
+            const dailyData = getDaySchedule(m, d);
+            dailyData.forEach(ev => {
+                const top = (ev.h - 6) * 26 + 25;
+                html += `<div class="ev ${ev.c} ${ev.p || ''}" style="top:${top}px; height:${ev.dur*26}px;">
+                            <b>${ev.n}</b><span>${ev.s}</span>
+                         </div>`;
+            });
+            grid.innerHTML += `<div class="day-cell">${html}</div>`;
+        }
+    }
+
+    function openSchedule() { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('schedule-section').classList.add('active'); renderCalendar(1); }
+    function openTodo() { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('todo-section').classList.add('active'); }
+    function goHome() { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('home-section').classList.add('active'); updateHomeDashboard(); }
+
+    function addTodo() {
+        const input = document.getElementById('todoInput'); if(!input.value) return;
+        const list = JSON.parse(localStorage.getItem('winter_v10') || '[]');
+        list.push({ text: input.value, done: false });
+        localStorage.setItem('winter_v10', JSON.stringify(list));
+        input.value = ''; loadTodos();
+    }
+    function loadTodos() {
+        const el = document.getElementById('todoList');
+        const list = JSON.parse(localStorage.getItem('winter_v10') || '[]');
+        el.innerHTML = list.length ? '' : '<p style="color:#999; text-align:center;">할 일이 없습니다.</p>';
+        list.forEach((t, i) => {
+            const div = document.createElement('div');
+            div.style = "display:flex; align-items:center; padding:10px 0; border-bottom:1px solid #f0f0f0;";
+            div.innerHTML = `<input type="checkbox" ${t.done?'checked':''} onchange="toggleTodo(${i})">
+                <span style="flex:1; margin:0 10px; ${t.done?'text-decoration:line-through; color:#bbb;':''}">${t.text}</span>
+                <button onclick="delTodo(${i})" style="color:red; border:none; background:none; cursor:pointer;">삭제</button>`;
+            el.appendChild(div);
+        });
+    }
+    function toggleTodo(i) { const list = JSON.parse(localStorage.getItem('winter_v10')); list[i].done = !list[i].done; localStorage.setItem('winter_v10', JSON.stringify(list)); loadTodos(); }
+    function delTodo(i) { const list = JSON.parse(localStorage.getItem('winter_v10')); list.splice(i, 1); localStorage.setItem('winter_v10', JSON.stringify(list)); loadTodos(); }
+</script>
+</body>
+</html>
