@@ -26,23 +26,20 @@
         .timeline-scroll-area { width: 100%; border: 1px solid #eee; border-radius: 8px; overflow: hidden; display: flex; background: white; }
         .time-column { width: 65px; background: #f8f9fa; border-right: 1px solid #eee; flex-shrink: 0; position: relative; height: 722px; }
         
-        /* 시간 숫자를 가로줄과 나란히 맞춤 */
         .time-label { 
             position: absolute; width: 100%; text-align: center; 
             font-size: clamp(11px, 1.2vw, 16px); 
             font-weight: 700; color: #444; 
-            height: 38px; line-height: 38px; /* 한 칸의 높이와 맞춤 */
+            height: 38px; line-height: 38px;
             top: 0;
         }
 
         .timeline-container { 
             position: relative; height: 722px; flex-grow: 1; background: white; 
-            /* 가로줄이 숫자 옆에서 시작되도록 배경 설정 */
             background-image: linear-gradient(#eee 1px, transparent 1px); 
             background-size: 100% 38px; 
         }
         
-        /* 현재 시간 빨간 선 - 기준점 수정 */
         .now-indicator { position: absolute; left: 0; right: 0; height: 2px; background: var(--now-line); z-index: 20; display: none; pointer-events: none; }
 
         .ev { position: absolute; left: 2px; right: 2px; padding: 4px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; border-left: 2px solid rgba(0,0,0,0.1); z-index: 5; word-break: keep-all; }
@@ -98,7 +95,7 @@
 
 <section id="home-section" class="section active">
     <div class="dashboard">
-        <h2 id="todayDate" style="font-size:1.2rem; margin:5px 0 10px 0;">오늘의 시간표</h2>
+        <h2 id="todayDate" style="font-size:1.2rem; margin:5px 0 10px 0;"></h2>
         <div class="timeline-scroll-area">
             <div class="time-column" id="timeLabels"></div>
             <div class="timeline-container" id="todayTimeline">
@@ -187,27 +184,46 @@
         return baseSchedule[day] || [];
     }
 
-    window.onload = function() { createTimeLabels(); updateHomeDashboard(); loadTodos(); setInterval(updateNowLine, 30000); };
+    // [초 단위 시계 및 빨간 선 업데이트 통합 실행]
+    window.onload = function() { 
+        createTimeLabels(); 
+        updateHomeDashboard(); 
+        loadTodos(); 
+        setInterval(updateClockAndLine, 1000); // 1초마다 시계와 선 위치 업데이트
+    };
 
     function updateHomeDashboard() {
         const now = new Date(); const m = now.getMonth() + 1; const d = now.getDate();
-        document.getElementById('todayDate').innerText = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }) + " 일정";
         const container = document.getElementById('todayTimeline'); container.querySelectorAll('.ev').forEach(e => e.remove());
         getDaySchedule(m, d).forEach(ev => {
-            const top = (ev.h - 6) * 38; // 정각 선에 딱 맞춤
+            const top = (ev.h - 6) * 38;
             const div = document.createElement('div');
             div.className = `ev ${ev.c} ${ev.p || ''}`; div.style = `top:${top}px; height:${ev.dur * 38}px;`;
             div.innerHTML = `<b>${ev.n}</b><span>${formatTime12(ev.s)} - ${formatTime12(ev.e)}</span>`;
             container.appendChild(div);
         });
-        updateNowLine();
+        updateClockAndLine();
     }
 
-    function updateNowLine() {
-        const now = new Date(); const h = now.getHours() + now.getMinutes() / 60;
+    function updateClockAndLine() {
+        const now = new Date();
+        const m = now.getMonth() + 1;
+        const d = now.getDate();
+        
+        // 1. 실시간 시계 업데이트 (초 단위 포함)
+        const dateStr = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+        const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('todayDate').innerText = `${dateStr} ${timeStr} 일정`;
+
+        // 2. 빨간 선 위치 업데이트
+        const h = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
         const line = document.getElementById('nowLineHome');
-        // 가로줄 위치와 정확히 일치하도록 수정
-        if (h >= 6 && h <= 24) { line.style.top = (h - 6) * 38 + 'px'; line.style.display = 'block'; } else { line.style.display = 'none'; }
+        if (h >= 6 && h <= 24) { 
+            line.style.top = (h - 6) * 38 + 'px'; 
+            line.style.display = 'block'; 
+        } else { 
+            line.style.display = 'none'; 
+        }
     }
 
     function renderCalendar(m) {
