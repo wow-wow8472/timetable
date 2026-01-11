@@ -69,7 +69,6 @@
         .nav-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
         .menu-btn-large { background: #222; color: white; border: none; padding: 25px; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 1.4rem; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .back-btn-huge { background: #444; color: white; border: none; width: 100%; padding: 20px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; font-size: 1.3rem; font-weight: bold; }
-        /* 급한 숙제 스타일 */
         .urgent-item { background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 8px solid #ff4d4d; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .urgent-item h3 { margin: 0 0 5px 0; font-size: 1.2rem; color: #222; }
         .urgent-item p { margin: 0; color: #666; font-size: 1rem; }
@@ -81,7 +80,9 @@
 
 <section id="home-section" class="section active">
     <div class="dashboard">
-        <h2 id="todayDate" style="font-size:1.2rem; margin:5px 0 10px 0;"></h2>
+        <h2 id="todayDate" style="font-size:1.2rem; margin:5px 0 2px 0;"></h2>
+        <p id="statusMessage" style="font-size:1.1rem; font-weight:bold; color:#d32f2f; margin:0 0 10px 0;"></p>
+        
         <div class="timeline-scroll-area">
             <div class="time-column" id="timeLabels"></div>
             <div class="timeline-container" id="todayTimeline">
@@ -291,7 +292,6 @@
         listEl.innerHTML = '';
         const now = new Date();
         const nowTime = now.getTime();
-        
         let urgentFound = false;
         let processedClasses = new Set(); 
 
@@ -305,22 +305,17 @@
             sched.forEach(ev => {
                 if (ev.c === 'hldy') return; 
                 if (processedClasses.has(ev.n)) return;
-
                 let prevInfo = findPreviousClass(ev.n, futureDate);
-                
                 if (prevInfo) {
                     const [endH, endM] = prevInfo.event.e.split(':').map(Number);
                     const prevEndDate = new Date(2026, prevInfo.m - 1, prevInfo.d, endH, endM).getTime();
-                    
                     if (prevEndDate < nowTime) {
                         const saved = (checkData[prevInfo.dateKey] && checkData[prevInfo.dateKey][prevInfo.idx]) || { hw: false };
                         const auto = getAutoStatus(prevInfo.event, prevInfo.dateKey);
                         const isDone = auto.autoHw || saved.hw;
-
                         if (!isDone) {
                             urgentFound = true;
                             processedClasses.add(ev.n); 
-
                             const item = document.createElement('div');
                             item.className = 'urgent-item';
                             item.innerHTML = `
@@ -422,11 +417,53 @@
         getDaySchedule(m, d).forEach((ev, idx) => { container.appendChild(createEvElement(ev, `2026-${m}-${d}`, idx, false)); });
     }
 
+    // 타격 수정: 기상 기준 상태 문구 업데이트 로직
     function updateClockAndLine() {
         const now = new Date();
+        const m = now.getMonth() + 1; const d = now.getDate();
         const dateStr = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
         const timeStr = now.toLocaleTimeString('ko-KR', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
         if(document.getElementById('todayDate')) document.getElementById('todayDate').innerText = `${dateStr} ${timeStr} 일정`;
+        
+        const msgEl = document.getElementById('statusMessage');
+        if (msgEl) {
+            const sched = getDaySchedule(m, d);
+            const nowH = now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
+            
+            function getDiffStr(targetH) {
+                let diffSec = Math.floor((targetH - nowH) * 3600);
+                if (diffSec < 0) diffSec = 0;
+                const hh = Math.floor(diffSec / 3600);
+                const mm = Math.floor((diffSec % 3600) / 60);
+                const ss = diffSec % 60;
+                if (hh > 0) return `${hh}시간 ${mm}분 ${ss}초`;
+                return `${mm}분 ${ss}초`;
+            }
+
+            // 1. 자정(0시) ~ 새벽 5시 30분 사이일 때 -> 일어나기까지 카운트다운
+            if (nowH >= 0 && nowH < 5.5) {
+                msgEl.innerText = `일어나기까지 ${getDiffStr(5.5)} 남았습니다.`;
+            } else {
+                // 2. 5시 30분 이후 로직 (수업 중 / 다음 수업 대기 / 잠들기 대기)
+                let currentClass = null;
+                let nextClass = null;
+
+                sched.forEach(ev => {
+                    if (nowH >= ev.h && nowH < (ev.h + ev.dur)) currentClass = ev;
+                    else if (nowH < ev.h && (!nextClass || ev.h < nextClass.h)) nextClass = ev;
+                });
+
+                if (currentClass) {
+                    msgEl.innerText = `수업시간 ${getDiffStr(currentClass.h + currentClass.dur)} 남았습니다.`;
+                } else if (nextClass) {
+                    msgEl.innerText = `다음 수업 ${getDiffStr(nextClass.h)} 남았습니다.`;
+                } else {
+                    // 더 이상 남은 수업이 없을 때 자정(24시)까지 잠들기 카운트다운
+                    msgEl.innerText = `잠들기까지 ${getDiffStr(24)} 남았습니다.`;
+                }
+            }
+        }
+
         const h = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
         const line = document.getElementById('nowLineHome');
         if (line && h >= 6 && h <= 24) { line.style.top = (h - 6) * 38 + 'px'; line.style.display = 'block'; }
