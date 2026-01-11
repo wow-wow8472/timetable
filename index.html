@@ -15,12 +15,12 @@
             --now-line: #ff4d4d;
         }
         body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; }
-        header { background: #222; color: white; padding: 15px; text-align: center; font-weight: bold; }
+        header { background: #222; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.5rem; }
         
-        .section { display: none; padding: 10px; box-sizing: border-box; }
+        .section { display: none; padding: 15px; box-sizing: border-box; }
         .section.active { display: block; }
 
-        .dashboard { background: white; border-radius: 15px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 15px; border: 1px solid #eee; }
+        .dashboard { background: white; border-radius: 15px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #eee; }
         
         /* 홈 타임라인 */
         .timeline-scroll-area { width: 100%; border: 1px solid #eee; border-radius: 8px; overflow: hidden; display: flex; }
@@ -30,28 +30,23 @@
 
         .now-indicator { position: absolute; left: 0; right: 0; height: 2px; background: var(--now-line); z-index: 20; display: none; pointer-events: none; }
 
-        /* 공통 이벤트 박스 */
-        .ev { 
-            position: absolute; left: 2px; right: 2px; padding: 4px; border-radius: 4px; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; 
-            border-left: 2px solid rgba(0,0,0,0.1); z-index: 5; word-break: keep-all; 
-        }
-        /* [중요] 좌우 분할 클래스 */
+        /* 이벤트 박스 */
+        .ev { position: absolute; left: 2px; right: 2px; padding: 4px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; border-left: 2px solid rgba(0,0,0,0.1); z-index: 5; word-break: keep-all; }
         .ev.half-left { right: 51% !important; }
         .ev.half-right { left: 51% !important; }
+        .ev b { font-size: 10px; margin-bottom: 1px; display: block; }
+        .ev span { font-size: 8px; font-weight: 600; opacity: 0.9; }
 
         /* 달력 그리드 */
         .calendar-wrapper { width: 100%; border-radius: 8px; overflow: hidden; }
         .grid-container { display: grid; grid-template-columns: repeat(7, 1fr); background: #eee; width: 100%; }
-        .day-header { background: #f8f9fa; padding: 5px; text-align: center; font-weight: bold; font-size: 10px; }
+        .day-header { background: #f8f9fa; padding: 8px 0; text-align: center; font-weight: bold; font-size: 12px; }
         .day-cell { background: white; height: 350px; position: relative; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
-        .day-num { padding: 4px; font-weight: bold; font-size: 10px; }
+        .day-num { padding: 6px; font-weight: bold; font-size: 12px; }
 
-        /* 달력용 시간표 박스 */
         .cal-ev { position: absolute; left: 1px; right: 1px; padding: 2px; border-radius: 3px; font-size: 8px; line-height: 1.1; border-left: 2px solid rgba(0,0,0,0.1); z-index: 5; }
         .cal-ev b { font-size: 8px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .cal-ev span { font-size: 7px; display: block; margin-top: 1px; opacity: 0.8; }
-        /* 달력 내 좌우 분할 */
         .cal-ev.half-left { right: 51% !important; }
         .cal-ev.half-right { left: 51% !important; }
 
@@ -65,9 +60,25 @@
         .algo-os { background: var(--algo-os); color: #33691e; }
         .hldy { background: var(--holiday); color: #854d0e; text-align: center; font-weight: bold; }
 
-        .nav-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        .menu-btn { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 13px; }
-        .back-btn { background: #444; color: white; border: none; padding: 8px 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; font-size: 12px; }
+        /* [핵심] 버튼 스타일 대폭 수정 */
+        .nav-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+        .menu-btn-large { 
+            background: #222; color: white; border: none; 
+            padding: 25px; border-radius: 15px; 
+            font-weight: bold; cursor: pointer; font-size: 1.4rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .menu-btn-large:active { background: #444; transform: scale(0.98); }
+
+        .back-btn-huge { 
+            background: #444; color: white; border: none; 
+            width: 100%; padding: 20px; border-radius: 12px; 
+            margin-bottom: 15px; cursor: pointer; 
+            font-size: 1.3rem; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .back-btn-huge:active { background: #666; }
     </style>
 </head>
 <body>
@@ -76,7 +87,7 @@
 
 <section id="home-section" class="section active">
     <div class="dashboard">
-        <h2 id="todayDate" style="font-size:1rem; margin:0 0 10px 0;">오늘의 시간표</h2>
+        <h2 id="todayDate" style="font-size:1.2rem; margin:5px 0 10px 0;">오늘의 시간표</h2>
         <div class="timeline-scroll-area">
             <div class="time-column" id="timeLabels"></div>
             <div class="timeline-container" id="todayTimeline">
@@ -84,18 +95,18 @@
             </div>
         </div>
     </div>
-    <div class="nav-grid">
-        <button class="menu-btn" onclick="openSchedule()">🗓️ 전체 달력</button>
-        <button class="menu-btn" onclick="openTodo()">✅ 할 일</button>
+    <div class="nav-stack">
+        <button class="menu-btn-large" onclick="openSchedule()">🗓️ 전체 달력 보기</button>
+        <button class="menu-btn-large" onclick="openTodo()">✅ 할 일 체크하기</button>
     </div>
 </section>
 
 <section id="schedule-section" class="section">
-    <button class="back-btn" onclick="goHome()">🏠 홈으로</button>
-    <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: center;">
-        <button onclick="renderCalendar(1)" style="padding:5px 12px; font-size:12px; border:1px solid #ccc;">1월</button>
-        <button onclick="renderCalendar(2)" style="padding:5px 12px; font-size:12px; border:1px solid #ccc;">2월</button>
-        <strong id="monthTitle" style="font-size: 1rem; margin-left: 5px;"></strong>
+    <button class="back-btn-huge" onclick="goHome()">🏠 홈으로 돌아가기</button>
+    <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; justify-content: center;">
+        <button onclick="renderCalendar(1)" style="padding:15px 30px; font-size:1.2rem; font-weight:bold; border-radius:10px; border:1px solid #ccc; background:white;">1월</button>
+        <button onclick="renderCalendar(2)" style="padding:15px 30px; font-size:1.2rem; font-weight:bold; border-radius:10px; border:1px solid #ccc; background:white;">2월</button>
+        <strong id="monthTitle" style="font-size: 1.5rem; margin-left: 10px;"></strong>
     </div>
     <div class="calendar-wrapper">
         <div class="grid-container" id="calendarGrid"></div>
@@ -103,18 +114,19 @@
 </section>
 
 <section id="todo-section" class="section">
-    <button class="back-btn" onclick="goHome()">🏠 홈으로</button>
+    <button class="back-btn-huge" onclick="goHome()">🏠 홈으로 돌아가기</button>
     <div class="dashboard">
-        <h2 style="font-size:1rem;">📋 To-do List</h2>
-        <div style="display:flex; gap:8px; margin-bottom:15px;">
-            <input type="text" id="todoInput" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:12px;" placeholder="할 일 입력">
-            <button onclick="addTodo()" style="padding:0 15px; background:#222; color:white; border:none; border-radius:8px; font-size:12px;">추가</button>
+        <h2 style="font-size:1.2rem;">📋 To-do List</h2>
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <input type="text" id="todoInput" style="flex:1; padding:15px; border:1px solid #ddd; border-radius:10px; font-size:1.1rem;" placeholder="할 일 입력">
+            <button onclick="addTodo()" style="padding:0 25px; background:#222; color:white; border:none; border-radius:10px; font-size:1.1rem; font-weight:bold;">추가</button>
         </div>
-        <div id="todoList" style="font-size:12px;"></div>
+        <div id="todoList" style="font-size:1.1rem;"></div>
     </div>
 </section>
 
 <script>
+    // [데이터 및 로직은 이전과 동일]
     const baseSchedule = {
         1: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol', p:'half-left'}, {n:'물리(브밸)장재필', s:'19:20', e:'22:10', h:19.33, dur:2.8, c:'phys-br', p:'half-right'}],
         2: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'한컴 알고리즘', s:'13:00', e:'14:50', h:13, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}],
@@ -196,8 +208,7 @@
             let html = `<div class="day-num">${d}</div>`;
             const dailyData = getDaySchedule(m, d);
             dailyData.forEach(ev => {
-                const top = (ev.h - 6) * 16 + 20;
-                // [수정] cal-ev 클래스에도 ev.p(half-left 등)가 적용되도록 했습니다.
+                const top = (ev.h - 6) * 16 + 24;
                 html += `<div class="cal-ev ${ev.c} ${ev.p || ''}" style="top:${top}px; height:${ev.dur*16}px;">
                             <b>${ev.n}</b>
                             <span>${formatTimeShort(ev.s)}-${formatTimeShort(ev.e)}</span>
@@ -221,10 +232,10 @@
         const el = document.getElementById('todoList'); const list = JSON.parse(localStorage.getItem('winter_v10') || '[]');
         el.innerHTML = list.length ? '' : '<p style="color:#999; text-align:center;">할 일이 없습니다.</p>';
         list.forEach((t, i) => {
-            const div = document.createElement('div'); div.style = "display:flex; align-items:center; padding:10px 0; border-bottom:1px solid #f0f0f0;";
-            div.innerHTML = `<input type="checkbox" ${t.done?'checked':''} onchange="toggleTodo(${i})">
-                <span style="flex:1; margin:0 10px; ${t.done?'text-decoration:line-through; color:#bbb;':''}">${t.text}</span>
-                <button onclick="delTodo(${i})" style="color:red; border:none; background:none; cursor:pointer;">삭제</button>`;
+            const div = document.createElement('div'); div.style = "display:flex; align-items:center; padding:15px 0; border-bottom:1px solid #f0f0f0;";
+            div.innerHTML = `<input type="checkbox" style="width:20px; height:20px;" ${t.done?'checked':''} onchange="toggleTodo(${i})">
+                <span style="flex:1; margin:0 15px; font-size:1.1rem; ${t.done?'text-decoration:line-through; color:#bbb;':''}">${t.text}</span>
+                <button onclick="delTodo(${i})" style="color:red; border:none; background:none; cursor:pointer; font-size:1.1rem;">삭제</button>`;
             el.appendChild(div);
         });
     }
