@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
-    <title>2026 Winter Master</title>
+    <title>2026 Winter Master (Sync)</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         :root {
             --bg: #fdfdfd;
@@ -14,6 +16,8 @@
             --holiday: #fffde7;
             --now-line: #ff4d4d;
             --sunday-red: #d32f2f;
+            --chk-hw: rgba(255, 0, 0, 0.4);
+            --chk-rev: rgba(0, 0, 255, 0.3);
         }
         body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; }
         header { background: #222; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.5rem; }
@@ -22,44 +26,45 @@
         .section.active { display: block; }
 
         .dashboard { background: white; border-radius: 15px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #eee; }
-        
         .timeline-scroll-area { width: 100%; border: 1px solid #eee; border-radius: 8px; overflow: hidden; display: flex; background: white; }
         .time-column { width: 65px; background: #f8f9fa; border-right: 1px solid #eee; flex-shrink: 0; position: relative; height: 722px; }
-        
-        .time-label { 
-            position: absolute; width: 100%; text-align: center; 
-            font-size: clamp(11px, 1.2vw, 16px); 
-            font-weight: 700; color: #444; 
-            height: 38px; line-height: 38px;
-            top: 0;
-        }
-
-        .timeline-container { 
-            position: relative; height: 722px; flex-grow: 1; background: white; 
-            background-image: linear-gradient(#eee 1px, transparent 1px); 
-            background-size: 100% 38px; 
-        }
-        
+        .time-label { position: absolute; width: 100%; text-align: center; font-size: 14px; font-weight: 700; color: #444; height: 38px; line-height: 38px; top: 0; }
+        .timeline-container { position: relative; height: 722px; flex-grow: 1; background: white; background-image: linear-gradient(#eee 1px, transparent 1px); background-size: 100% 38px; }
         .now-indicator { position: absolute; left: 0; right: 0; height: 2px; background: var(--now-line); z-index: 20; display: none; pointer-events: none; }
 
-        .ev { position: absolute; left: 2px; right: 2px; padding: 4px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; border-left: 2px solid rgba(0,0,0,0.1); z-index: 5; word-break: keep-all; }
-        .ev.half-left { right: 51% !important; left: 2px !important; }
-        .ev.half-right { left: 51% !important; right: 2px !important; }
-        .ev b { font-size: clamp(11px, 1.3vw, 18px); margin-bottom: 2px; display: block; line-height: 1.2; }
-        .ev span { font-size: clamp(9px, 1vw, 14px); font-weight: 700; opacity: 0.9; }
+        .ev, .cal-ev { position: absolute; border-radius: 4px; border-left: 2px solid rgba(0,0,0,0.1); z-index: 5; overflow: hidden; display: flex; flex-direction: column; word-break: keep-all; }
+        .ev { left: 2px; right: 2px; padding: 4px; }
+        .cal-ev { left: 1px; right: 1px; padding: 2px; }
+
+        .half-left { right: 51% !important; }
+        .half-right { left: 51% !important; }
+
+        .split-check-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; z-index: 1; pointer-events: none; }
+        .hw-part, .rev-part { flex: 1; height: 100%; }
+        .hw-part.active { background: var(--chk-hw); }
+        .rev-part.active { background: var(--chk-rev); }
+
+        .ev-content { position: relative; z-index: 2; pointer-events: none; width: 100%; }
+        .ev b { font-size: clamp(12px, 1.4vw, 18px); line-height: 1.1; margin-bottom: 2px; display: block; }
+        .ev span { font-size: clamp(10px, 1.1vw, 14px); font-weight: 700; opacity: 0.9; }
+
+        .cal-ev b { font-size: clamp(9px, 1vw, 13px); line-height: 1.05; display: block; }
+        .cal-ev span { font-size: clamp(8px, 0.8vw, 11px); display: block; margin-top: 1px; opacity: 0.8; }
 
         .calendar-wrapper { width: 100%; border-radius: 8px; overflow: hidden; }
         .grid-container { display: grid; grid-template-columns: repeat(7, 1fr); background: #eee; width: 100%; }
-        .day-header { background: #f8f9fa; padding: 8px 0; text-align: center; font-weight: bold; font-size: clamp(12px, 1.5vw, 18px); }
+        .day-header { background: #f8f9fa; padding: 8px 0; text-align: center; font-weight: bold; }
         .day-cell { background: white; height: 350px; position: relative; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
-        .day-num { padding: 6px; font-weight: bold; font-size: clamp(12px, 1.5vw, 18px); }
+        .day-num { padding: 6px; font-weight: bold; }
         .is-red { color: var(--sunday-red) !important; }
 
-        .cal-ev { position: absolute; left: 1px; right: 1px; padding: 2px; border-radius: 3px; border-left: 2px solid rgba(0,0,0,0.1); z-index: 5; }
-        .cal-ev.half-left { right: 51% !important; left: 1px !important; }
-        .cal-ev.half-right { left: 51% !important; right: 1px !important; }
-        .cal-ev b { font-size: clamp(9px, 1vw, 13px); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .cal-ev span { font-size: clamp(8px, 0.8vw, 11px); display: block; margin-top: 1px; opacity: 0.8; }
+        .edit-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; background: #f9f9f9; padding: 15px; border-radius: 12px; border: 1px solid #ddd; }
+        .edit-btn { background: #444; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
+        .edit-active .edit-btn { background: #ff4d4d; }
+        .edit-active .cal-ev { cursor: pointer; }
+        .guide-row { display: flex; gap: 15px; font-size: 0.9rem; font-weight: bold; justify-content: center; }
+        .guide-item { display: flex; align-items: center; gap: 5px; }
+        .box-sample { width: 14px; height: 14px; border-radius: 2px; }
 
         .math-br { background: var(--math-br); color: #0d47a1; }
         .math-ryu { background: var(--math-ryu); color: #00695c; }
@@ -72,21 +77,8 @@
         .hldy { background: var(--holiday); color: #854d0e; text-align: center; font-weight: bold; }
 
         .nav-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
-        .menu-btn-large { 
-            background: #222; color: white; border: none; 
-            padding: 25px; border-radius: 15px; 
-            font-weight: bold; cursor: pointer; font-size: 1.4rem;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-            text-decoration: none;
-        }
-        .back-btn-huge { 
-            background: #444; color: white; border: none; 
-            width: 100%; padding: 20px; border-radius: 12px; 
-            margin-bottom: 15px; cursor: pointer; 
-            font-size: 1.3rem; font-weight: bold;
-            display: flex; align-items: center; justify-content: center;
-        }
+        .menu-btn-large { background: #222; color: white; border: none; padding: 25px; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 1.4rem; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .back-btn-huge { background: #444; color: white; border: none; width: 100%; padding: 20px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; font-size: 1.3rem; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -104,16 +96,21 @@
         </div>
     </div>
     <div class="nav-stack">
-        <a href="https://www.youtube.com/playlist?list=PL0yYc0K1-YryjgZ6AONKyBP9VjiYwTDWv" target="_blank" class="menu-btn-large">
-            🎵 배경 음악 재생 (YouTube)
-        </a>
+        <a href="https://www.youtube.com/playlist?list=PL0yYc0K1-YryjgZ6AONKyBP9VjiYwTDWv" target="_blank" class="menu-btn-large">🎵 배경 음악 재생 (YouTube)</a>
         <button class="menu-btn-large" onclick="navigateTo('schedule-section')">🗓️ 전체 달력 보기</button>
         <button class="menu-btn-large" onclick="navigateTo('todo-section')">✅ 할 일 체크하기</button>
     </div>
 </section>
 
 <section id="schedule-section" class="section">
-    <button class="back-btn-huge" onclick="window.history.back()">🏠 홈으로 돌아가기</button>
+    <button class="back-btn-huge" onclick="navigateTo('home-section')">🏠 홈으로 돌아가기</button>
+    <div class="edit-controls">
+        <div class="guide-row">
+            <div class="guide-item"><div class="box-sample" style="background: var(--chk-hw); border: 1px solid red;"></div> 왼쪽: 숙제</div>
+            <div class="guide-item"><div class="box-sample" style="background: var(--chk-rev); border: 1px solid blue;"></div> 오른쪽: 복습</div>
+        </div>
+        <button class="edit-btn" id="editToggleBtn" onclick="toggleEditMode()">🛠️ 수정 모드 시작</button>
+    </div>
     <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; justify-content: center;">
         <button onclick="renderCalendar(1)" style="padding:15px 30px; font-size:1.2rem; font-weight:bold; border-radius:10px; border:1px solid #ccc; background:white;">1월</button>
         <button onclick="renderCalendar(2)" style="padding:15px 30px; font-size:1.2rem; font-weight:bold; border-radius:10px; border:1px solid #ccc; background:white;">2월</button>
@@ -125,7 +122,7 @@
 </section>
 
 <section id="todo-section" class="section">
-    <button class="back-btn-huge" onclick="window.history.back()">🏠 홈으로 돌아가기</button>
+    <button class="back-btn-huge" onclick="navigateTo('home-section')">🏠 홈으로 돌아가기</button>
     <div class="dashboard">
         <h2 style="font-size:1.2rem;">📋 To-do List</h2>
         <div style="display:flex; gap:10px; margin-bottom:20px;">
@@ -137,6 +134,36 @@
 </section>
 
 <script>
+    // --- Firebase 초기화 ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyA5TchtCroGefUyHb7ELwim-p9FQ-wETNk",
+        authDomain: "vac-828ed.firebaseapp.com",
+        databaseURL: "https://vac-828ed-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "vac-828ed",
+        storageBucket: "vac-828ed.firebasestorage.app",
+        messagingSenderId: "575598289785",
+        appId: "1:575598289785:web:c64a90aac839d5d47745a8"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let isEditMode = false;
+    let checkData = {};
+    let todoList = [];
+    let currentMonth = new Date().getMonth() + 1;
+
+    // 데이터베이스 실시간 리스너
+    db.ref('checks').on('value', (snapshot) => {
+        checkData = snapshot.val() || {};
+        if (document.getElementById('schedule-section').classList.contains('active')) renderCalendar(currentMonth);
+        updateHomeDashboard();
+    });
+
+    db.ref('todos').on('value', (snapshot) => {
+        todoList = snapshot.val() || [];
+        loadTodos();
+    });
+
     const baseSchedule = {
         1: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol', p:'half-left'}, {n:'물리(브밸)장재필', s:'19:20', e:'22:10', h:19.33, dur:2.8, c:'phys-br', p:'half-right'}],
         2: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'한컴 알고리즘', s:'13:00', e:'14:50', h:13, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}],
@@ -158,134 +185,167 @@
         return `${h12}:${m}`;
     }
 
-    function createTimeLabels() {
-        const col = document.getElementById('timeLabels'); col.innerHTML = '';
-        for (let i = 6; i <= 24; i++) {
-            const label = document.createElement('div'); label.className = 'time-label';
-            label.style.top = (i - 6) * 38 + 'px';
-            label.innerText = i >= 12 ? (i === 12 ? '오후 12' : `오후 ${i-12}`) : `오전 ${i}`;
-            col.appendChild(label);
+    function mergeSchedules(list) {
+        if (!list || list.length <= 1) return list;
+        let sorted = [...list].sort((a, b) => a.h - b.h);
+        let merged = [];
+        let current = sorted[0];
+        for (let i = 1; i < sorted.length; i++) {
+            let next = sorted[i];
+            if (current.n === next.n && (next.h - (current.h + current.dur)) <= 0.5) {
+                current = { ...current, e: next.e, dur: (next.h + next.dur) - current.h };
+            } else { merged.push(current); current = next; }
         }
+        merged.push(current);
+        return merged;
     }
 
     function getDaySchedule(m, d) {
         const dateObj = new Date(2026, m - 1, d); const day = dateObj.getDay();
-        if (m === 2) {
+        let s = [];
+        if (m === 1 && d === 1) {
+            s = [{n:'확통(다원)김찬용', s:'10:00', e:'13:00', h:10, dur:3, c:'math-dw'}, {n:'확통(다원)김찬용', s:'19:00', e:'22:00', h:19, dur:3, c:'math-dw'}];
+        } else if (m === 2) {
             if (d === 12) {
-                let s = baseSchedule[4].filter(ev => !ev.n.includes('장세욱'));
-                s.push({n:'학교 등교', s:'08:00', e:'15:30', h:8, dur:4.5, c:'hldy'}); return s;
-            }
-            if (d === 16 || d === 18) return baseSchedule[day].filter(ev => ev.n.includes('이정욱'));
-            if (d === 21) return baseSchedule[6].filter(ev => !ev.n.includes('류우성'));
-            if (d === 23) return baseSchedule[1].filter(ev => !ev.n.includes('장재필'));
-            if (d === 28) return baseSchedule[6].filter(ev => !ev.n.includes('류우성') && !ev.n.includes('양기선'));
-        }
-        if (m === 3 && d <= 3) return [];
-        return baseSchedule[day] || [];
+                s = baseSchedule[4].filter(ev => !ev.n.includes('장세욱'));
+                s.push({n:'학교 등교', s:'08:00', e:'15:30', h:8, dur:4.5, c:'hldy'});
+            } else if (d === 16 || d === 18) s = baseSchedule[day].filter(ev => ev.n.includes('이정욱'));
+            else if (d === 21) s = baseSchedule[6].filter(ev => !ev.n.includes('류우성'));
+            else if (d === 23) s = baseSchedule[1].filter(ev => !ev.n.includes('장재필'));
+            else if (d === 28) s = baseSchedule[6].filter(ev => !ev.n.includes('류우성') && !ev.n.includes('양기선'));
+            else s = baseSchedule[day] || [];
+        } else s = baseSchedule[day] || [];
+        return mergeSchedules(s);
     }
 
-    function navigateTo(sectionId) {
-        history.pushState({section: sectionId}, '', `#${sectionId}`);
-        showSection(sectionId);
-    }
-
-    window.onpopstate = function(event) {
-        if (event.state && event.state.section) {
-            showSection(event.state.section);
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        const btn = document.getElementById('editToggleBtn');
+        const section = document.getElementById('schedule-section');
+        if (isEditMode) {
+            btn.innerText = "✅ 수정 완료 (저장됨)";
+            section.classList.add('edit-active');
         } else {
-            showSection('home-section');
+            btn.innerText = "🛠️ 수정 모드 시작";
+            section.classList.remove('edit-active');
         }
-    };
-
-    function showSection(sectionId) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.getElementById(sectionId).classList.add('active');
-        if(sectionId === 'home-section') updateHomeDashboard();
-        if(sectionId === 'schedule-section') renderCalendar(new Date().getMonth() + 1);
     }
 
-    window.onload = function() { 
-        createTimeLabels(); 
-        updateHomeDashboard(); 
-        loadTodos(); 
-        setInterval(updateClockAndLine, 1000);
-        history.replaceState({section: 'home-section'}, '', '');
-    };
+    function handleTaskClick(e, dateKey, taskIdx) {
+        if (!isEditMode) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const isLeft = x < rect.width / 2;
+        
+        let currentStatus = (checkData[dateKey] && checkData[dateKey][taskIdx]) || { hw: false, rev: false };
+        if (isLeft) currentStatus.hw = !currentStatus.hw;
+        else currentStatus.rev = !currentStatus.rev;
+
+        db.ref(`checks/${dateKey}/${taskIdx}`).set(currentStatus);
+    }
+
+    function createEvElement(ev, dateKey, idx, isCalendar) {
+        const div = document.createElement('div');
+        div.className = `${isCalendar ? 'cal-ev' : 'ev'} ${ev.c} ${ev.p || ''}`;
+        const unit = isCalendar ? 16 : 38;
+        const top = (ev.h - 6) * unit + (isCalendar ? 24 : 0);
+        div.style = `top:${top}px; height:${ev.dur * unit}px;`;
+        const status = (checkData[dateKey] && checkData[dateKey][idx]) || { hw: false, rev: false };
+        if (isCalendar) div.onclick = (e) => handleTaskClick(e, dateKey, idx);
+        div.innerHTML = `
+            <div class="split-check-layer">
+                <div class="hw-part ${status.hw ? 'active' : ''}"></div>
+                <div class="rev-part ${status.rev ? 'active' : ''}"></div>
+            </div>
+            <div class="ev-content">
+                <b>${ev.n}</b>
+                <span>${isCalendar ? formatTimeShort(ev.s)+'-'+formatTimeShort(ev.e) : formatTime12(ev.s)+' - '+formatTime12(ev.e)}</span>
+            </div>
+        `;
+        return div;
+    }
+
+    function renderCalendar(m) {
+        currentMonth = m;
+        const grid = document.getElementById('calendarGrid');
+        if(!grid) return;
+        document.getElementById('monthTitle').innerText = `${m}월`;
+        grid.innerHTML = '';
+        ['일','월','화','수','목','금','토'].forEach(d => grid.innerHTML += `<div class="day-header">${d}</div>`);
+        const first = new Date(2026, m-1, 1).getDay();
+        const last = new Date(2026, m, 0).getDate();
+        for(let i=0; i<first; i++) grid.innerHTML += `<div class="day-cell"></div>`;
+        for(let d=1; d<=last; d++) {
+            const dateKey = `2026-${m}-${d}`;
+            const dateObj = new Date(2026, m-1, d);
+            const isSunday = dateObj.getDay() === 0;
+            const isSpecialHoliday = (m === 2 && (d === 16 || d === 17 || d === 18));
+            const cell = document.createElement('div');
+            cell.className = 'day-cell';
+            cell.innerHTML = `<div class="day-num ${isSunday || isSpecialHoliday ? 'is-red' : ''}">${d}</div>`;
+            getDaySchedule(m, d).forEach((ev, idx) => { cell.appendChild(createEvElement(ev, dateKey, idx, true)); });
+            grid.appendChild(cell);
+        }
+    }
 
     function updateHomeDashboard() {
         const now = new Date(); const m = now.getMonth() + 1; const d = now.getDate();
-        const container = document.getElementById('todayTimeline'); container.querySelectorAll('.ev').forEach(e => e.remove());
-        getDaySchedule(m, d).forEach(ev => {
-            const top = (ev.h - 6) * 38;
-            const div = document.createElement('div');
-            div.className = `ev ${ev.c} ${ev.p || ''}`; div.style = `top:${top}px; height:${ev.dur * 38}px;`;
-            div.innerHTML = `<b>${ev.n}</b><span>${formatTime12(ev.s)} - ${formatTime12(ev.e)}</span>`;
-            container.appendChild(div);
-        });
-        updateClockAndLine();
+        const container = document.getElementById('todayTimeline');
+        if(!container) return;
+        container.querySelectorAll('.ev').forEach(e => e.remove());
+        const dateKey = `2026-${m}-${d}`;
+        getDaySchedule(m, d).forEach((ev, idx) => { container.appendChild(createEvElement(ev, dateKey, idx, false)); });
     }
 
     function updateClockAndLine() {
         const now = new Date();
         const dateStr = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
-        
-        // 1. 시계 표시 형식 수정 (오전/오후 HH:mm:ss)
         const timeStr = now.toLocaleTimeString('ko-KR', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const dateEl = document.getElementById('todayDate');
         if(dateEl) dateEl.innerText = `${dateStr} ${timeStr} 일정`;
-
         const h = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
         const line = document.getElementById('nowLineHome');
-        if (line && h >= 6 && h <= 24) { 
-            line.style.top = (h - 6) * 38 + 'px'; 
-            line.style.display = 'block'; 
-        } else if(line) { 
-            line.style.display = 'none'; 
-        }
+        if (line && h >= 6 && h <= 24) { line.style.top = (h - 6) * 38 + 'px'; line.style.display = 'block'; }
+        else if(line) line.style.display = 'none';
     }
 
-    function renderCalendar(m) {
-        const grid = document.getElementById('calendarGrid');
-        if(!grid) return;
-        document.getElementById('monthTitle').innerText = `${m}월`; grid.innerHTML = '';
-        ['일','월','화','수','목','금','토'].forEach(d => grid.innerHTML += `<div class="day-header">${d}</div>`);
-        const first = new Date(2026, m-1, 1).getDay(); const last = new Date(2026, m, 0).getDate();
-        for(let i=0; i<first; i++) grid.innerHTML += `<div class="day-cell"></div>`;
-        for(let d=1; d<=last; d++) {
-            const dateObj = new Date(2026, m-1, d);
-            const isSunday = dateObj.getDay() === 0;
-            const isSpecialHoliday = (m === 2 && (d === 16 || d === 17 || d === 18));
-            let html = `<div class="day-num ${isSunday || isSpecialHoliday ? 'is-red' : ''}">${d}</div>`;
-            getDaySchedule(m, d).forEach(ev => {
-                const top = (ev.h - 6) * 16 + 24;
-                html += `<div class="cal-ev ${ev.c} ${ev.p || ''}" style="top:${top}px; height:${ev.dur*16}px;">
-                            <b>${ev.n}</b><span>${formatTimeShort(ev.s)}-${formatTimeShort(ev.e)}</span>
-                         </div>`;
-            });
-            grid.innerHTML += `<div class="day-cell">${html}</div>`;
-        }
+    function navigateTo(id) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'home-section') updateHomeDashboard();
+        if(id === 'schedule-section') { isEditMode = false; renderCalendar(currentMonth); }
+        if(id === 'todo-section') loadTodos();
     }
 
     function addTodo() {
         const input = document.getElementById('todoInput'); if(!input.value) return;
-        const list = JSON.parse(localStorage.getItem('winter_v10') || '[]');
-        list.push({ text: input.value, done: false }); localStorage.setItem('winter_v10', JSON.stringify(list));
-        input.value = ''; loadTodos();
+        const newList = [...todoList, { text: input.value, done: false }];
+        db.ref('todos').set(newList);
+        input.value = '';
     }
     function loadTodos() {
         const el = document.getElementById('todoList'); if(!el) return;
-        const list = JSON.parse(localStorage.getItem('winter_v10') || '[]');
-        el.innerHTML = list.length ? '' : '<p style="color:#999; text-align:center;">할 일이 없습니다.</p>';
-        list.forEach((t, i) => {
+        el.innerHTML = todoList.length ? '' : '<p style="color:#999; text-align:center;">할 일이 없습니다.</p>';
+        todoList.forEach((t, i) => {
             const div = document.createElement('div'); div.style = "display:flex; align-items:center; padding:15px 0; border-bottom:1px solid #f0f0f0;";
-            div.innerHTML = `<input type="checkbox" style="width:20px; height:20px;" ${t.done?'checked':''} onchange="toggleTodo(${i})">
-                <span style="flex:1; margin:0 15px; font-size:1.1rem; ${t.done?'text-decoration:line-through; color:#bbb;':''}">${t.text}</span>
-                <button onclick="delTodo(${i})" style="color:red; border:none; background:none; cursor:pointer; font-size:1.1rem;">삭제</button>`;
+            div.innerHTML = `<input type="checkbox" style="width:20px; height:20px;" ${t.done?'checked':''} onchange="toggleTodo(${i})"><span style="flex:1; margin:0 15px; ${t.done?'text-decoration:line-through; color:#bbb;':''}">${t.text}</span><button onclick="delTodo(${i})" style="color:red; border:none; background:none; cursor:pointer;">삭제</button>`;
             el.appendChild(div);
         });
     }
-    function toggleTodo(i) { const list = JSON.parse(localStorage.getItem('winter_v10')); list[i].done = !list[i].done; localStorage.setItem('winter_v10', JSON.stringify(list)); loadTodos(); }
-    function delTodo(i) { const list = JSON.parse(localStorage.getItem('winter_v10')); list.splice(i, 1); localStorage.setItem('winter_v10', JSON.stringify(list)); loadTodos(); }
+    function toggleTodo(i) { todoList[i].done = !todoList[i].done; db.ref('todos').set(todoList); }
+    function delTodo(i) { todoList.splice(i, 1); db.ref('todos').set(todoList); }
+
+    window.onload = () => {
+        const col = document.getElementById('timeLabels');
+        for (let i = 6; i <= 24; i++) {
+            const label = document.createElement('div');
+            label.className = 'time-label'; label.style.top = (i - 6) * 38 + 'px';
+            label.innerText = i >= 12 ? (i === 12 ? '오후 12' : `오후 ${i-12}`) : `오전 ${i}`;
+            col.appendChild(label);
+        }
+        updateClockAndLine();
+        setInterval(updateClockAndLine, 1000);
+    };
 </script>
 </body>
 </html>
