@@ -60,7 +60,7 @@
         .algo-os { background: var(--algo-os); color: #33691e; }
         .hldy { background: var(--holiday); color: #854d0e; text-align: center; font-weight: bold; }
 
-        /* [핵심] 버튼 스타일 대폭 수정 */
+        /* 버튼 스타일 */
         .nav-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
         .menu-btn-large { 
             background: #222; color: white; border: none; 
@@ -126,14 +126,14 @@
 </section>
 
 <script>
-    // [데이터 및 로직은 이전과 동일]
     const baseSchedule = {
         1: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol', p:'half-left'}, {n:'물리(브밸)장재필', s:'19:20', e:'22:10', h:19.33, dur:2.8, c:'phys-br', p:'half-right'}],
         2: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'한컴 알고리즘', s:'13:00', e:'14:50', h:13, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}],
         3: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol'}],
         4: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'미적(브밸)류우성', s:'13:00', e:'16:00', h:13, dur:3, c:'math-ryu'}, {n:'미적(원솔)김기현', s:'18:00', e:'22:00', h:18, dur:4, c:'math-ws'}],
         5: [{n:'원솔 알고리즘', s:'09:30', e:'13:30', h:9.5, dur:4, c:'algo-os'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'17:00', e:'18:50', h:17, dur:1.8, c:'algo-hc'}],
-        6: [{n:'확통(다원)김찬용', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-dw', p:'half-left'}, {n:'미적(브밸)류우성', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-ryu', p:'half-right'}, {n:'물리(브밸)양기선', s:'16:00', e:'19:00', h:16, dur:3, c:'phys-br'}]
+        // [수정] 토요일(6) 양기선T 수업 종료 시간을 19:20으로 변경 (지속시간 3.33시간)
+        6: [{n:'확통(다원)김찬용', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-dw', p:'half-left'}, {n:'미적(브밸)류우성', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-ryu', p:'half-right'}, {n:'물리(브밸)양기선', s:'16:00', e:'19:20', h:16, dur:3.33, c:'phys-br'}]
     };
 
     function formatTime12(hStr) {
