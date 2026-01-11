@@ -53,9 +53,6 @@
         .edit-btn { background: #444; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
         .edit-active .edit-btn { background: #ff4d4d; }
         .edit-active .cal-ev { cursor: pointer; }
-        .guide-row { display: flex; gap: 15px; font-size: 0.9rem; font-weight: bold; justify-content: center; }
-        .guide-item { display: flex; align-items: center; gap: 5px; }
-        .box-sample { width: 14px; height: 14px; border-radius: 2px; }
         .math-br { background: var(--math-br); color: #0d47a1; }
         .math-ryu { background: var(--math-ryu); color: #00695c; }
         .math-dw { background: var(--math-dw); color: #4a148c; }
@@ -94,10 +91,7 @@
 <section id="schedule-section" class="section">
     <button class="back-btn-huge" onclick="navigateTo('home-section')">🏠 홈으로 돌아가기</button>
     <div class="edit-controls">
-        <div class="guide-row">
-            <div class="guide-item"><div class="box-sample" style="background: var(--chk-hw); border: 1px solid red;"></div> 왼쪽: 숙제</div>
-            <div class="guide-item"><div class="box-sample" style="background: var(--chk-rev); border: 1px solid blue;"></div> 오른쪽: 복습</div>
-        </div>
+        <div style="text-align:center; font-size:0.85rem; color:#666; margin-bottom:5px;">※ 원솔 알고리즘은 복습만 자동 체크됩니다.</div>
         <button class="edit-btn" id="editToggleBtn" onclick="toggleEditMode()">🛠️ 수정 모드 시작</button>
     </div>
     <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; justify-content: center;">
@@ -190,16 +184,11 @@
     function getDaySchedule(m, d) {
         const dateObj = new Date(2026, m - 1, d); const day = dateObj.getDay();
         let s = [];
-        // 1월 3일 양기선 수업 제거 (토요일=6이지만 수동 예외처리)
-        if (m === 1 && d === 3) {
-            s = baseSchedule[6].filter(ev => !ev.n.includes('양기선'));
-        } else if (m === 1 && d === 1) {
-            s = [{n:'확통(다원)김찬용', s:'10:00', e:'13:00', h:10, dur:3, c:'math-dw'}, {n:'확통(다원)김찬용', s:'19:00', e:'22:00', h:19, dur:3, c:'math-dw'}];
-        } else if (m === 2) {
-            if (d === 12) {
-                s = baseSchedule[4].filter(ev => !ev.n.includes('장세욱'));
-                s.push({n:'학교 등교', s:'08:00', e:'15:30', h:8, dur:4.5, c:'hldy'});
-            } else if (d === 16 || d === 18) s = baseSchedule[day].filter(ev => ev.n.includes('이정욱'));
+        if (m === 1 && d === 3) { s = baseSchedule[6].filter(ev => !ev.n.includes('양기선')); }
+        else if (m === 1 && d === 1) { s = [{n:'확통(다원)김찬용', s:'10:00', e:'13:00', h:10, dur:3, c:'math-dw'}, {n:'확통(다원)김찬용', s:'19:00', e:'22:00', h:19, dur:3, c:'math-dw'}]; }
+        else if (m === 2) {
+            if (d === 12) { s = baseSchedule[4].filter(ev => !ev.n.includes('장세욱')); s.push({n:'학교 등교', s:'08:00', e:'15:30', h:8, dur:4.5, c:'hldy'}); }
+            else if (d === 16 || d === 18) s = baseSchedule[day].filter(ev => ev.n.includes('이정욱'));
             else if (d === 21) s = baseSchedule[6].filter(ev => !ev.n.includes('류우성'));
             else if (d === 23) s = baseSchedule[1].filter(ev => !ev.n.includes('장재필'));
             else if (d === 28) s = baseSchedule[6].filter(ev => !ev.n.includes('류우성') && !ev.n.includes('양기선'));
@@ -208,24 +197,40 @@
         return mergeSchedules(s);
     }
 
-    function toggleEditMode() {
-        isEditMode = !isEditMode;
-        const btn = document.getElementById('editToggleBtn');
-        const section = document.getElementById('schedule-section');
-        if (isEditMode) {
-            btn.innerText = "✅ 수정 완료 (저장됨)";
-            section.classList.add('edit-active');
-        } else {
-            btn.innerText = "🛠️ 수정 모드 시작";
-            section.classList.remove('edit-active');
+    // 정밀 자동 체크 로직
+    function getAutoStatus(ev, dateKey) {
+        const [targetY, targetM, targetD] = dateKey.split('-').map(Number);
+        const now = new Date();
+        const currentH = now.getHours() + now.getMinutes() / 60;
+        const isPastDay = (targetY < now.getFullYear()) || (targetY === now.getFullYear() && targetM < (now.getMonth()+1)) || (targetY === now.getFullYear() && targetM === (now.getMonth()+1) && targetD < now.getDate());
+        const isToday = (targetY === now.getFullYear() && targetM === (now.getMonth()+1) && targetD === now.getDate());
+        const isPastTime = isPastDay || (isToday && currentH >= (ev.h + ev.dur));
+
+        let autoHw = false;
+        let autoRev = false;
+        let hwLocked = false;
+        let revLocked = false;
+
+        if (isPastTime) {
+            if (ev.n.includes('원솔 알고리즘')) {
+                autoRev = true; revLocked = true; // 복습만 자동 체크 및 잠금
+            } else if (ev.n.includes('한컴 알고리즘') || ev.n.includes('미적(원솔)김기현')) {
+                autoHw = true; autoRev = true; hwLocked = true; revLocked = true; // 둘 다 잠금
+            }
         }
+        return { autoHw, autoRev, hwLocked, revLocked };
     }
 
-    function handleTaskClick(e, dateKey, taskIdx) {
+    function handleTaskClick(e, dateKey, taskIdx, ev) {
         if (!isEditMode) return;
+        const auto = getAutoStatus(ev, dateKey);
         const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const isLeft = x < rect.width / 2;
+        const isLeft = (e.clientX - rect.left) < rect.width / 2;
+        
+        // 클릭한 영역이 잠겨있으면 무시
+        if (isLeft && auto.hwLocked) return;
+        if (!isLeft && auto.revLocked) return;
+
         let currentStatus = (checkData[dateKey] && checkData[dateKey][taskIdx]) || { hw: false, rev: false };
         if (isLeft) currentStatus.hw = !currentStatus.hw;
         else currentStatus.rev = !currentStatus.rev;
@@ -238,15 +243,24 @@
         const unit = isCalendar ? 16 : 38;
         const top = (ev.h - 6) * unit + (isCalendar ? 24 : 0);
         div.style = `top:${top}px; height:${ev.dur * unit}px;`;
-        const status = (checkData[dateKey] && checkData[dateKey][idx]) || { hw: false, rev: false };
-        if (isCalendar) div.onclick = (e) => handleTaskClick(e, dateKey, idx);
+
+        const saved = (checkData[dateKey] && checkData[dateKey][idx]) || { hw: false, rev: false };
+        const auto = getAutoStatus(ev, dateKey);
+        const finalHw = auto.autoHw || saved.hw;
+        const finalRev = auto.autoRev || saved.rev;
+
+        if (isCalendar) div.onclick = (e) => handleTaskClick(e, dateKey, idx, ev);
+        
+        // 시각적 잠금 표시 (둘 다 잠겼을 때만 🔒)
+        const isFullLocked = auto.hwLocked && auto.revLocked;
+
         div.innerHTML = `
             <div class="split-check-layer">
-                <div class="hw-part ${status.hw ? 'active' : ''}"></div>
-                <div class="rev-part ${status.rev ? 'active' : ''}"></div>
+                <div class="hw-part ${finalHw ? 'active' : ''}"></div>
+                <div class="rev-part ${finalRev ? 'active' : ''}"></div>
             </div>
             <div class="ev-content">
-                <b>${ev.n}</b>
+                <b>${ev.n}${isFullLocked ? ' 🔒' : ''}</b>
                 <span>${isCalendar ? formatTimeShort(ev.s)+'-'+formatTimeShort(ev.e) : formatTime12(ev.s)+' - '+formatTime12(ev.e)}</span>
             </div>
         `;
@@ -266,11 +280,9 @@
         for(let d=1; d<=last; d++) {
             const dateKey = `2026-${m}-${d}`;
             const dateObj = new Date(2026, m-1, d);
-            const isSunday = dateObj.getDay() === 0;
-            const isSpecialHoliday = (m === 2 && (d === 16 || d === 17 || d === 18));
             const cell = document.createElement('div');
             cell.className = 'day-cell';
-            cell.innerHTML = `<div class="day-num ${isSunday || isSpecialHoliday ? 'is-red' : ''}">${d}</div>`;
+            cell.innerHTML = `<div class="day-num ${dateObj.getDay()===0 || (m===2 && (d===16||d===17||d===18)) ? 'is-red' : ''}">${d}</div>`;
             getDaySchedule(m, d).forEach((ev, idx) => { cell.appendChild(createEvElement(ev, dateKey, idx, true)); });
             grid.appendChild(cell);
         }
@@ -295,6 +307,7 @@
         const line = document.getElementById('nowLineHome');
         if (line && h >= 6 && h <= 24) { line.style.top = (h - 6) * 38 + 'px'; line.style.display = 'block'; }
         else if(line) line.style.display = 'none';
+        if (now.getSeconds() === 0) updateHomeDashboard();
     }
 
     function navigateTo(id, saveHistory = true) {
@@ -302,8 +315,16 @@
         document.getElementById(id).classList.add('active');
         if (saveHistory) { history.pushState({ sectionId: id }, '', `#${id}`); }
         if(id === 'home-section') updateHomeDashboard();
-        if(id === 'schedule-section') { isEditMode = false; renderCalendar(currentMonth); }
+        if(id === 'schedule-section') { isEditMode = false; renderCalendar(currentMonth); toggleEditMode(); toggleEditMode(); }
         if(id === 'todo-section') loadTodos();
+    }
+
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        const btn = document.getElementById('editToggleBtn');
+        const section = document.getElementById('schedule-section');
+        if (isEditMode) { btn.innerText = "✅ 수정 완료 (저장됨)"; section.classList.add('edit-active'); }
+        else { btn.innerText = "🛠️ 수정 모드 시작"; section.classList.remove('edit-active'); }
     }
 
     window.onpopstate = function(event) {
@@ -314,8 +335,7 @@
     function addTodo() {
         const input = document.getElementById('todoInput'); if(!input.value) return;
         const newList = [...todoList, { text: input.value, done: false }];
-        db.ref('todos').set(newList);
-        input.value = '';
+        db.ref('todos').set(newList); input.value = '';
     }
     function loadTodos() {
         const el = document.getElementById('todoList'); if(!el) return;
