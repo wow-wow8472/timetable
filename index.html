@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
-    <title>2026 Winter Master (Sync)</title>
+    <title>2026 Winter Master (Final Sync)</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
@@ -20,7 +20,7 @@
             --chk-rev: rgba(0, 0, 255, 0.3);
             --today-border: #ff0000;
         }
-        body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; }
+        body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; overflow-x: hidden; }
         header { background: #222; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.5rem; }
         .section { display: none; padding: 15px; box-sizing: border-box; }
         .section.active { display: block; }
@@ -136,45 +136,38 @@
     let currentMonth = new Date().getMonth() + 1;
     let autoAddLog = {};
 
-    // --- 네비게이션 동기화 핵심 함수 ---
     function navigateTo(id, saveHistory = true) {
         const target = document.getElementById(id);
         if (!target) return;
-
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         target.classList.add('active');
-
-        if (saveHistory) {
-            if (history.state?.sectionId !== id) {
-                history.pushState({ sectionId: id }, '', `#${id}`);
-            }
+        if (saveHistory && history.state?.sectionId !== id) {
+            history.pushState({ sectionId: id }, '', `#${id}`);
         }
-
         if(id === 'home-section') updateHomeDashboard();
         if(id === 'schedule-section') { isEditMode = false; currentMonth = new Date().getMonth() + 1; renderCalendar(currentMonth); }
         if(id === 'todo-section') loadTodos();
-        
         window.scrollTo(0,0);
     }
 
-    // 뒤로가기 버튼 연동
     window.addEventListener('popstate', (event) => {
-        if (event.state && event.state.sectionId) {
-            navigateTo(event.state.sectionId, false);
-        } else {
-            navigateTo('home-section', false);
-        }
+        if (event.state && event.state.sectionId) navigateTo(event.state.sectionId, false);
+        else navigateTo('home-section', false);
     });
 
     function handleBackBtn() {
-        if (history.state && history.state.sectionId !== 'home-section') {
-            history.back();
-        } else {
-            navigateTo('home-section');
-        }
+        if (history.state && history.state.sectionId !== 'home-section') history.back();
+        else navigateTo('home-section');
     }
 
-    // --- 할 일 자동 누적 및 DB 연동 ---
+    // 컴퓨터 단축키 (Alt + ←) 만 유지
+    window.addEventListener('keydown', (e) => {
+        if (e.altKey && e.key === 'ArrowLeft') {
+            e.preventDefault();
+            handleBackBtn();
+        }
+    });
+
     db.ref('autoAddedHistory').once('value', (snap) => {
         autoAddLog = snap.val() || {};
         db.ref('todos').on('value', (snapshot) => {
@@ -242,13 +235,9 @@
             }
             current.setDate(current.getDate() + 1);
         }
-        if (updated) { 
-            db.ref('todos').set(todoList); 
-            db.ref('autoAddedHistory').set(autoAddLog); 
-        }
+        if (updated) { db.ref('todos').set(todoList); db.ref('autoAddedHistory').set(autoAddLog); }
     }
 
-    // --- 공통 유틸리티 및 렌더링 ---
     function formatTime12(hStr) {
         let [h, m] = hStr.split(':'); h = parseInt(h);
         const p = h >= 12 ? '오후' : '오전';
@@ -263,22 +252,20 @@
     function mergeSchedules(list) {
         if (!list || list.length <= 1) return list;
         let sorted = [...list].sort((a, b) => a.h - b.h);
-        let merged = [];
-        let current = sorted[0];
+        let merged = []; let current = sorted[0];
         for (let i = 1; i < sorted.length; i++) {
             let next = sorted[i];
             if (current.n === next.n && (next.h - (current.h + current.dur)) <= 0.5) {
                 current = { ...current, e: next.e, dur: (next.h + next.dur) - current.h };
             } else { merged.push(current); current = next; }
         }
-        merged.push(current);
-        return merged;
+        merged.push(current); return merged;
     }
     function getDaySchedule(m, d) {
         const dateObj = new Date(2026, m - 1, d); const day = dateObj.getDay();
         let s = [];
-        if (m === 1 && d === 3) { s = baseSchedule[6].filter(ev => !ev.n.includes('양기선')); }
-        else if (m === 1 && d === 1) { s = [{n:'확통(다원)김찬용', s:'10:00', e:'13:00', h:10, dur:3, c:'math-dw'}, {n:'확통(다원)김찬용', s:'19:00', e:'22:00', h:19, dur:3, c:'math-dw'}]; }
+        if (m === 1 && d === 3) s = baseSchedule[6].filter(ev => !ev.n.includes('양기선'));
+        else if (m === 1 && d === 1) s = [{n:'확통(다원)김찬용', s:'10:00', e:'13:00', h:10, dur:3, c:'math-dw'}, {n:'확통(다원)김찬용', s:'19:00', e:'22:00', h:19, dur:3, c:'math-dw'}];
         else if (m === 2) {
             if (d === 12) { s = baseSchedule[4].filter(ev => !ev.n.includes('장세욱')); s.push({n:'학교 등교', s:'08:00', e:'15:30', h:8, dur:4.5, c:'hldy'}); }
             else if (d === 16 || d === 18) s = baseSchedule[day].filter(ev => ev.n.includes('이정욱'));
@@ -291,8 +278,7 @@
     }
     function getAutoStatus(ev, dateKey) {
         const [targetY, targetM, targetD] = dateKey.split('-').map(Number);
-        const now = new Date();
-        const currentH = now.getHours() + now.getMinutes() / 60;
+        const now = new Date(); const currentH = now.getHours() + now.getMinutes() / 60;
         const isPastDay = (targetY < now.getFullYear()) || (targetY === now.getFullYear() && targetM < (now.getMonth()+1)) || (targetY === now.getFullYear() && targetM === (now.getMonth()+1) && targetD < now.getDate());
         const isToday = (targetY === now.getFullYear() && targetM === (now.getMonth()+1) && targetD === now.getDate());
         const isPastTime = isPastDay || (isToday && currentH >= (ev.h + ev.dur));
@@ -308,8 +294,7 @@
         const auto = getAutoStatus(ev, dateKey);
         const rect = e.currentTarget.getBoundingClientRect();
         const isLeft = (e.clientX - rect.left) < rect.width / 2;
-        if (isLeft && auto.hwLocked) return;
-        if (!isLeft && auto.revLocked) return;
+        if ((isLeft && auto.hwLocked) || (!isLeft && auto.revLocked)) return;
         let currentStatus = (checkData[dateKey] && checkData[dateKey][taskIdx]) || { hw: false, rev: false };
         if (isLeft) currentStatus.hw = !currentStatus.hw; else currentStatus.rev = !currentStatus.rev;
         db.ref(`checks/${dateKey}/${taskIdx}`).set(currentStatus);
@@ -322,35 +307,26 @@
         div.style = `top:${top}px; height:${ev.dur * unit}px;`;
         const saved = (checkData[dateKey] && checkData[dateKey][idx]) || { hw: false, rev: false };
         const auto = getAutoStatus(ev, dateKey);
-        const finalHw = auto.autoHw || saved.hw;
-        const finalRev = auto.autoRev || saved.rev;
+        const finalHw = auto.autoHw || saved.hw; const finalRev = auto.autoRev || saved.rev;
         if (isCalendar) div.onclick = (e) => handleTaskClick(e, dateKey, idx, ev);
-        const isFullLocked = auto.hwLocked && auto.revLocked;
+        const locked = auto.hwLocked && auto.revLocked;
         div.innerHTML = `
             <div class="split-check-layer"><div class="hw-part ${finalHw ? 'active' : ''}"></div><div class="rev-part ${finalRev ? 'active' : ''}"></div></div>
-            <div class="ev-content"><b>${ev.n}${isFullLocked ? ' 🔒' : ''}</b><span>${isCalendar ? formatTimeShort(ev.s)+'-'+formatTimeShort(ev.e) : formatTime12(ev.s)+' - '+formatTime12(ev.e)}</span></div>
+            <div class="ev-content"><b>${ev.n}${locked ? ' 🔒' : ''}</b><span>${isCalendar ? formatTimeShort(ev.s)+'-'+formatTimeShort(ev.e) : formatTime12(ev.s)+' - '+formatTime12(ev.e)}</span></div>
         `;
         return div;
     }
     function renderCalendar(m) {
-        currentMonth = m;
-        const grid = document.getElementById('calendarGrid');
-        if(!grid) return;
-        document.getElementById('monthTitle').innerText = `${m}월`;
-        grid.innerHTML = '';
+        currentMonth = m; const grid = document.getElementById('calendarGrid'); if(!grid) return;
+        document.getElementById('monthTitle').innerText = `${m}월`; grid.innerHTML = '';
         ['일','월','화','수','목','금','토'].forEach(d => grid.innerHTML += `<div class="day-header">${d}</div>`);
-        const first = new Date(2026, m-1, 1).getDay();
-        const last = new Date(2026, m, 0).getDate();
-        const now = new Date();
-        const realTodayM = now.getMonth() + 1;
-        const realTodayD = now.getDate();
+        const first = new Date(2026, m-1, 1).getDay(); const last = new Date(2026, m, 0).getDate();
+        const now = new Date(); const realTodayM = now.getMonth() + 1; const realTodayD = now.getDate();
         for(let i=0; i<first; i++) grid.innerHTML += `<div class="day-cell"></div>`;
         for(let d=1; d<=last; d++) {
-            const dateKey = `2026-${m}-${d}`;
-            const dateObj = new Date(2026, m-1, d);
+            const dateKey = `2026-${m}-${d}`; const dateObj = new Date(2026, m-1, d);
             const isToday = (m === realTodayM && d === realTodayD);
-            const cell = document.createElement('div');
-            cell.className = `day-cell ${isToday ? 'is-today' : ''}`;
+            const cell = document.createElement('div'); cell.className = `day-cell ${isToday ? 'is-today' : ''}`;
             cell.innerHTML = `<div class="day-num ${dateObj.getDay()===0 || (m===2 && (d===16||d===17||d===18)) ? 'is-red' : ''}">${d}</div>`;
             getDaySchedule(m, d).forEach((ev, idx) => { cell.appendChild(createEvElement(ev, dateKey, idx, true)); });
             grid.appendChild(cell);
@@ -358,39 +334,30 @@
     }
     function updateHomeDashboard() {
         const now = new Date(); const m = now.getMonth() + 1; const d = now.getDate();
-        const container = document.getElementById('todayTimeline');
-        if(!container) return;
+        const container = document.getElementById('todayTimeline'); if(!container) return;
         container.querySelectorAll('.ev').forEach(e => e.remove());
-        const dateKey = `2026-${m}-${d}`;
-        getDaySchedule(m, d).forEach((ev, idx) => { container.appendChild(createEvElement(ev, dateKey, idx, false)); });
+        getDaySchedule(m, d).forEach((ev, idx) => { container.appendChild(createEvElement(ev, `2026-${m}-${d}`, idx, false)); });
     }
     function updateClockAndLine() {
         const now = new Date();
         const dateStr = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
         const timeStr = now.toLocaleTimeString('ko-KR', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const dateEl = document.getElementById('todayDate');
-        if(dateEl) dateEl.innerText = `${dateStr} ${timeStr} 일정`;
+        if(document.getElementById('todayDate')) document.getElementById('todayDate').innerText = `${dateStr} ${timeStr} 일정`;
         const h = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
         const line = document.getElementById('nowLineHome');
         if (line && h >= 6 && h <= 24) { line.style.top = (h - 6) * 38 + 'px'; line.style.display = 'block'; }
         else if(line) line.style.display = 'none';
-        
-        if (now.getSeconds() === 0) {
-            updateHomeDashboard();
-            backfillPastTodos();
-        }
+        if (now.getSeconds() === 0) { updateHomeDashboard(); backfillPastTodos(); }
     }
     function toggleEditMode() {
-        isEditMode = !isEditMode;
-        const btn = document.getElementById('editToggleBtn');
+        isEditMode = !isEditMode; const btn = document.getElementById('editToggleBtn');
         const section = document.getElementById('schedule-section');
         if (isEditMode) { btn.innerText = "✅ 수정 완료 (저장됨)"; section.classList.add('edit-active'); }
         else { btn.innerText = "🛠️ 수정 모드 시작"; section.classList.remove('edit-active'); }
     }
     function addTodo() {
         const input = document.getElementById('todoInput'); if(!input.value) return;
-        const newList = [...todoList, { text: input.value, done: false }];
-        db.ref('todos').set(newList); input.value = '';
+        db.ref('todos').set([...todoList, { text: input.value, done: false }]); input.value = '';
     }
     function loadTodos() {
         const el = document.getElementById('todoList'); if(!el) return;
@@ -401,21 +368,15 @@
             el.appendChild(div);
         });
     }
-    function deleteTodoImmediate(i) {
-        todoList.splice(i, 1);
-        db.ref('todos').set(todoList);
-    }
+    function deleteTodoImmediate(i) { todoList.splice(i, 1); db.ref('todos').set(todoList); }
 
     window.onload = () => {
         const col = document.getElementById('timeLabels');
         for (let i = 6; i <= 24; i++) {
-            const label = document.createElement('div');
-            label.className = 'time-label'; label.style.top = (i - 6) * 38 + 'px';
-            label.innerText = i >= 12 ? (i === 12 ? '오후 12' : `오후 ${i-12}`) : `오전 ${i}`;
-            col.appendChild(label);
+            const label = document.createElement('div'); label.className = 'time-label'; label.style.top = (i - 6) * 38 + 'px';
+            label.innerText = i >= 12 ? (i === 12 ? '오후 12' : `오후 ${i-12}`) : `오전 ${i}`; col.appendChild(label);
         }
-        updateClockAndLine();
-        setInterval(updateClockAndLine, 1000);
+        updateClockAndLine(); setInterval(updateClockAndLine, 1000);
         history.replaceState({ sectionId: 'home-section' }, '', '#home-section');
     };
 </script>
