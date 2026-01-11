@@ -18,6 +18,7 @@
             --sunday-red: #d32f2f;
             --chk-hw: rgba(255, 0, 0, 0.4);
             --chk-rev: rgba(0, 0, 255, 0.3);
+            --today-border: #ff0000;
         }
         body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; }
         header { background: #222; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.5rem; }
@@ -46,9 +47,10 @@
         .calendar-wrapper { width: 100%; border-radius: 8px; overflow: hidden; }
         .grid-container { display: grid; grid-template-columns: repeat(7, 1fr); background: #eee; width: 100%; }
         .day-header { background: #f8f9fa; padding: 8px 0; text-align: center; font-weight: bold; }
-        .day-cell { background: white; height: 350px; position: relative; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
+        .day-cell { background: white; height: 350px; position: relative; border-right: 1px solid #eee; border-bottom: 1px solid #eee; box-sizing: border-box; }
         .day-num { padding: 6px; font-weight: bold; }
         .is-red { color: var(--sunday-red) !important; }
+        .is-today { border: 3px solid var(--today-border) !important; z-index: 10; }
         .edit-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; background: #f9f9f9; padding: 15px; border-radius: 12px; border: 1px solid #ddd; }
         .edit-btn { background: #444; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
         .edit-active .edit-btn { background: #ff4d4d; }
@@ -91,7 +93,6 @@
 <section id="schedule-section" class="section">
     <button class="back-btn-huge" onclick="navigateTo('home-section')">🏠 홈으로 돌아가기</button>
     <div class="edit-controls">
-        <div style="text-align:center; font-size:0.85rem; color:#666; margin-bottom:5px;">※ 원솔 알고리즘은 복습만 자동 체크됩니다.</div>
         <button class="edit-btn" id="editToggleBtn" onclick="toggleEditMode()">🛠️ 수정 모드 시작</button>
     </div>
     <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; justify-content: center;">
@@ -197,7 +198,6 @@
         return mergeSchedules(s);
     }
 
-    // 정밀 자동 체크 로직
     function getAutoStatus(ev, dateKey) {
         const [targetY, targetM, targetD] = dateKey.split('-').map(Number);
         const now = new Date();
@@ -205,18 +205,10 @@
         const isPastDay = (targetY < now.getFullYear()) || (targetY === now.getFullYear() && targetM < (now.getMonth()+1)) || (targetY === now.getFullYear() && targetM === (now.getMonth()+1) && targetD < now.getDate());
         const isToday = (targetY === now.getFullYear() && targetM === (now.getMonth()+1) && targetD === now.getDate());
         const isPastTime = isPastDay || (isToday && currentH >= (ev.h + ev.dur));
-
-        let autoHw = false;
-        let autoRev = false;
-        let hwLocked = false;
-        let revLocked = false;
-
+        let autoHw = false, autoRev = false, hwLocked = false, revLocked = false;
         if (isPastTime) {
-            if (ev.n.includes('원솔 알고리즘')) {
-                autoRev = true; revLocked = true; // 복습만 자동 체크 및 잠금
-            } else if (ev.n.includes('한컴 알고리즘') || ev.n.includes('미적(원솔)김기현')) {
-                autoHw = true; autoRev = true; hwLocked = true; revLocked = true; // 둘 다 잠금
-            }
+            if (ev.n.includes('원솔 알고리즘')) { autoRev = true; revLocked = true; }
+            else if (ev.n.includes('한컴 알고리즘') || ev.n.includes('미적(원솔)김기현')) { autoHw = true; autoRev = true; hwLocked = true; revLocked = true; }
         }
         return { autoHw, autoRev, hwLocked, revLocked };
     }
@@ -226,14 +218,10 @@
         const auto = getAutoStatus(ev, dateKey);
         const rect = e.currentTarget.getBoundingClientRect();
         const isLeft = (e.clientX - rect.left) < rect.width / 2;
-        
-        // 클릭한 영역이 잠겨있으면 무시
         if (isLeft && auto.hwLocked) return;
         if (!isLeft && auto.revLocked) return;
-
         let currentStatus = (checkData[dateKey] && checkData[dateKey][taskIdx]) || { hw: false, rev: false };
-        if (isLeft) currentStatus.hw = !currentStatus.hw;
-        else currentStatus.rev = !currentStatus.rev;
+        if (isLeft) currentStatus.hw = !currentStatus.hw; else currentStatus.rev = !currentStatus.rev;
         db.ref(`checks/${dateKey}/${taskIdx}`).set(currentStatus);
     }
 
@@ -243,26 +231,15 @@
         const unit = isCalendar ? 16 : 38;
         const top = (ev.h - 6) * unit + (isCalendar ? 24 : 0);
         div.style = `top:${top}px; height:${ev.dur * unit}px;`;
-
         const saved = (checkData[dateKey] && checkData[dateKey][idx]) || { hw: false, rev: false };
         const auto = getAutoStatus(ev, dateKey);
         const finalHw = auto.autoHw || saved.hw;
         const finalRev = auto.autoRev || saved.rev;
-
         if (isCalendar) div.onclick = (e) => handleTaskClick(e, dateKey, idx, ev);
-        
-        // 시각적 잠금 표시 (둘 다 잠겼을 때만 🔒)
         const isFullLocked = auto.hwLocked && auto.revLocked;
-
         div.innerHTML = `
-            <div class="split-check-layer">
-                <div class="hw-part ${finalHw ? 'active' : ''}"></div>
-                <div class="rev-part ${finalRev ? 'active' : ''}"></div>
-            </div>
-            <div class="ev-content">
-                <b>${ev.n}${isFullLocked ? ' 🔒' : ''}</b>
-                <span>${isCalendar ? formatTimeShort(ev.s)+'-'+formatTimeShort(ev.e) : formatTime12(ev.s)+' - '+formatTime12(ev.e)}</span>
-            </div>
+            <div class="split-check-layer"><div class="hw-part ${finalHw ? 'active' : ''}"></div><div class="rev-part ${finalRev ? 'active' : ''}"></div></div>
+            <div class="ev-content"><b>${ev.n}${isFullLocked ? ' 🔒' : ''}</b><span>${isCalendar ? formatTimeShort(ev.s)+'-'+formatTimeShort(ev.e) : formatTime12(ev.s)+' - '+formatTime12(ev.e)}</span></div>
         `;
         return div;
     }
@@ -276,12 +253,17 @@
         ['일','월','화','수','목','금','토'].forEach(d => grid.innerHTML += `<div class="day-header">${d}</div>`);
         const first = new Date(2026, m-1, 1).getDay();
         const last = new Date(2026, m, 0).getDate();
+        const now = new Date();
+        const realTodayM = now.getMonth() + 1;
+        const realTodayD = now.getDate();
+
         for(let i=0; i<first; i++) grid.innerHTML += `<div class="day-cell"></div>`;
         for(let d=1; d<=last; d++) {
             const dateKey = `2026-${m}-${d}`;
             const dateObj = new Date(2026, m-1, d);
+            const isToday = (m === realTodayM && d === realTodayD);
             const cell = document.createElement('div');
-            cell.className = 'day-cell';
+            cell.className = `day-cell ${isToday ? 'is-today' : ''}`;
             cell.innerHTML = `<div class="day-num ${dateObj.getDay()===0 || (m===2 && (d===16||d===17||d===18)) ? 'is-red' : ''}">${d}</div>`;
             getDaySchedule(m, d).forEach((ev, idx) => { cell.appendChild(createEvElement(ev, dateKey, idx, true)); });
             grid.appendChild(cell);
@@ -315,7 +297,14 @@
         document.getElementById(id).classList.add('active');
         if (saveHistory) { history.pushState({ sectionId: id }, '', `#${id}`); }
         if(id === 'home-section') updateHomeDashboard();
-        if(id === 'schedule-section') { isEditMode = false; renderCalendar(currentMonth); toggleEditMode(); toggleEditMode(); }
+        if(id === 'schedule-section') { 
+            isEditMode = false; 
+            currentMonth = new Date().getMonth() + 1; // 켰을 때 현재 월로 초기화
+            renderCalendar(currentMonth); 
+            const btn = document.getElementById('editToggleBtn');
+            btn.innerText = "🛠️ 수정 모드 시작";
+            document.getElementById('schedule-section').classList.remove('edit-active');
+        }
         if(id === 'todo-section') loadTodos();
     }
 
