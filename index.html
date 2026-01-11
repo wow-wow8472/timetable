@@ -7,7 +7,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        /* [기존 스타일 시트 동일 유지] */
         :root {
             --bg: #fdfdfd;
             --math-br: #e3f2fd; --math-ryu: #e0f2f1;
@@ -119,7 +118,6 @@
 </section>
 
 <script>
-    // [파이어베이스 설정 동일]
     const firebaseConfig = {
         apiKey: "AIzaSyA5TchtCroGefUyHb7ELwim-p9FQ-wETNk",
         authDomain: "vac-828ed.firebaseapp.com",
@@ -138,14 +136,18 @@
     let currentMonth = new Date().getMonth() + 1;
     let autoAddLog = {};
 
-    // 네비게이션 핵심 로직 수정
+    // --- 네비게이션 동기화 핵심 함수 ---
     function navigateTo(id, saveHistory = true) {
+        const target = document.getElementById(id);
+        if (!target) return;
+
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        
+        target.classList.add('active');
+
         if (saveHistory) {
-            // 히스토리 상태를 명확히 기록하여 브라우저 뒤로가기 버튼과 매칭
-            history.pushState({ sectionId: id }, '', `#${id}`);
+            if (history.state?.sectionId !== id) {
+                history.pushState({ sectionId: id }, '', `#${id}`);
+            }
         }
 
         if(id === 'home-section') updateHomeDashboard();
@@ -155,16 +157,7 @@
         window.scrollTo(0,0);
     }
 
-    // 화면 내 버튼으로 뒤로가기 시 실행
-    function handleBackBtn() {
-        if (history.state && history.state.sectionId !== 'home-section') {
-            history.back(); // 브라우저 히스토리 한 단계 뒤로
-        } else {
-            navigateTo('home-section');
-        }
-    }
-
-    // 하드웨어/브라우저 뒤로가기 감지
+    // 뒤로가기 버튼 연동
     window.addEventListener('popstate', (event) => {
         if (event.state && event.state.sectionId) {
             navigateTo(event.state.sectionId, false);
@@ -173,7 +166,15 @@
         }
     });
 
-    // [기존 DB 로드 및 시간표 로직 동일]
+    function handleBackBtn() {
+        if (history.state && history.state.sectionId !== 'home-section') {
+            history.back();
+        } else {
+            navigateTo('home-section');
+        }
+    }
+
+    // --- 할 일 자동 누적 및 DB 연동 ---
     db.ref('autoAddedHistory').once('value', (snap) => {
         autoAddLog = snap.val() || {};
         db.ref('todos').on('value', (snapshot) => {
@@ -247,7 +248,7 @@
         }
     }
 
-    // [이하 나머지 기능 코드 동일 유지]
+    // --- 공통 유틸리티 및 렌더링 ---
     function formatTime12(hStr) {
         let [h, m] = hStr.split(':'); h = parseInt(h);
         const p = h >= 12 ? '오후' : '오전';
@@ -415,8 +416,6 @@
         }
         updateClockAndLine();
         setInterval(updateClockAndLine, 1000);
-        
-        // 초기 히스토리 상태 설정 (뒤로가기 방지용)
         history.replaceState({ sectionId: 'home-section' }, '', '#home-section');
     };
 </script>
