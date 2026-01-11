@@ -49,7 +49,6 @@
         .cal-ev.half-left { right: 51% !important; }
         .cal-ev.half-right { left: 51% !important; }
 
-        /* 색상 코드 */
         .math-br { background: var(--math-br); color: #0d47a1; }
         .math-ryu { background: var(--math-ryu); color: #00695c; }
         .math-dw { background: var(--math-dw); color: #4a148c; }
@@ -68,6 +67,7 @@
             font-weight: bold; cursor: pointer; font-size: 1.4rem;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
             display: flex; align-items: center; justify-content: center; gap: 10px;
+            text-decoration: none; /* 링크 밑줄 제거 */
         }
         .menu-btn-large:active { background: #444; transform: scale(0.98); }
 
@@ -78,46 +78,11 @@
             font-size: 1.3rem; font-weight: bold;
             display: flex; align-items: center; justify-content: center;
         }
-
-        /* 음악 페이지 전용 UI */
-        .music-ctrl-btn {
-            background: #ff4d4d; color: white; border: none;
-            width: 100%; padding: 30px; border-radius: 20px;
-            font-size: 1.8rem; font-weight: bold; margin-bottom: 20px;
-            box-shadow: 0 6px 15px rgba(255,77,77,0.3);
-        }
-        .music-ctrl-btn.next { background: #333; box-shadow: 0 6px 15px rgba(0,0,0,0.2); }
-
-        .volume-container {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 15px;
-        }
-        .volume-slider {
-            width: 100%;
-            height: 15px;
-            -webkit-appearance: none;
-            background: #ddd;
-            border-radius: 10px;
-            outline: none;
-            margin: 20px 0;
-        }
-        .volume-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 30px;
-            height: 30px;
-            background: #222;
-            border-radius: 50%;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
 
 <header>2026 Winter Master</header>
-
-<div id="player" style="position: absolute; width: 1px; height: 1px; opacity: 0;"></div>
 
 <section id="home-section" class="section active">
     <div class="dashboard">
@@ -130,25 +95,11 @@
         </div>
     </div>
     <div class="nav-stack">
-        <button class="menu-btn-large" onclick="openMusic()">🎵 배경 음악 틀기</button>
+        <a href="https://www.youtube.com/playlist?list=PL0yYc0K1-YryjgZ6AONKyBP9VjiYwTDWv" target="_blank" class="menu-btn-large">
+            🎵 배경 음악 재생 (YouTube)
+        </a>
         <button class="menu-btn-large" onclick="openSchedule()">🗓️ 전체 달력 보기</button>
         <button class="menu-btn-large" onclick="openTodo()">✅ 할 일 체크하기</button>
-    </div>
-</section>
-
-<section id="music-section" class="section">
-    <button class="back-btn-huge" onclick="goHome()">🏠 홈으로 돌아가기</button>
-    <div class="dashboard" style="text-align: center; padding: 40px 20px;">
-        <h2 style="font-size: 1.5rem; margin-bottom: 30px;">🎧 음악 재생 중 (셔플)</h2>
-        <button id="playBtn" class="music-ctrl-btn" onclick="toggleMusic()">▶ 음악 재생</button>
-        <button class="music-ctrl-btn next" onclick="nextMusic()">Skip 다음 곡 ⏭</button>
-        
-        <div class="volume-container">
-            <label style="font-weight: bold; font-size: 1.2rem;">🔊 볼륨 조절: <span id="volLabel">50</span>%</label>
-            <input type="range" class="volume-slider" id="volSlider" min="0" max="100" value="50" oninput="changeVolume(this.value)">
-        </div>
-        
-        <p style="color: #888; font-size: 1rem; margin-top:20px;">유튜브 재생목록이 셔플로 재생됩니다.</p>
     </div>
 </section>
 
@@ -176,62 +127,7 @@
     </div>
 </section>
 
-<script src="https://www.youtube.com/iframe_api"></script>
-
 <script>
-    let player;
-    let isPlaying = false;
-
-    function onYouTubeIframeAPIReady() {
-        player = new YT.Player('player', {
-            height: '1', width: '1',
-            playerVars: {
-                'listType': 'playlist',
-                'list': 'PL0yYc0K1-YryjgZ6AONKyBP9VjiYwTDWv',
-                'index': 0, 'autoplay': 0, 'loop': 1
-            },
-            events: { 'onReady': onPlayerReady }
-        });
-    }
-
-    function onPlayerReady(event) {
-        player.setShuffle(true);
-        // 초기 볼륨 설정 (50%)
-        player.setVolume(50);
-    }
-
-    function changeVolume(val) {
-        if (player && player.setVolume) {
-            player.setVolume(val);
-            document.getElementById('volLabel').innerText = val;
-        }
-    }
-
-    function toggleMusic() {
-        const btn = document.getElementById('playBtn');
-        if (!isPlaying) {
-            player.playVideo();
-            btn.innerText = "⏸ 일시 정지";
-            btn.style.background = "#444";
-            isPlaying = true;
-        } else {
-            player.pauseVideo();
-            btn.innerText = "▶ 음악 재생";
-            btn.style.background = "#ff4d4d";
-            isPlaying = false;
-        }
-    }
-
-    function nextMusic() {
-        player.nextVideo();
-        isPlaying = true;
-        document.getElementById('playBtn').innerText = "⏸ 일시 정지";
-        document.getElementById('playBtn').style.background = "#444";
-    }
-
-    function openMusic() { showSection('music-section'); }
-
-    // --- 기본 기능 로직 ---
     const baseSchedule = {
         1: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol', p:'half-left'}, {n:'물리(브밸)장재필', s:'19:20', e:'22:10', h:19.33, dur:2.8, c:'phys-br', p:'half-right'}],
         2: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'한컴 알고리즘', s:'13:00', e:'14:50', h:13, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}],
@@ -247,11 +143,13 @@
         let h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
         return `${p} ${h12}:${m}`;
     }
+
     function formatTimeShort(hStr) {
         let [h, m] = hStr.split(':'); h = parseInt(h);
         let h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
         return `${h12}:${m}`;
     }
+
     function createTimeLabels() {
         const col = document.getElementById('timeLabels'); col.innerHTML = '';
         for (let i = 6; i <= 24; i++) {
@@ -261,6 +159,7 @@
             col.appendChild(label);
         }
     }
+
     function getDaySchedule(m, d) {
         const dateObj = new Date(2026, m - 1, d); const day = dateObj.getDay();
         if (m === 2) {
@@ -277,7 +176,9 @@
         if (m === 3 && d <= 3) return [];
         return baseSchedule[day] || [];
     }
+
     window.onload = function() { createTimeLabels(); updateHomeDashboard(); loadTodos(); setInterval(updateNowLine, 30000); };
+
     function updateHomeDashboard() {
         const now = new Date(); const m = now.getMonth() + 1; const d = now.getDate();
         document.getElementById('todayDate').innerText = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }) + " 일정";
@@ -290,11 +191,13 @@
         });
         updateNowLine();
     }
+
     function updateNowLine() {
         const now = new Date(); const h = now.getHours() + now.getMinutes() / 60;
         const line = document.getElementById('nowLineHome');
         if (h >= 6 && h <= 24) { line.style.top = (h - 6) * 38 + 20 + 'px'; line.style.display = 'block'; } else { line.style.display = 'none'; }
     }
+
     function renderCalendar(m) {
         const grid = document.getElementById('calendarGrid');
         document.getElementById('monthTitle').innerText = `${m}월`; grid.innerHTML = '';
@@ -312,10 +215,10 @@
             grid.innerHTML += `<div class="day-cell">${html}</div>`;
         }
     }
-    function showSection(id) { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-    function openSchedule() { showSection('schedule-section'); renderCalendar(1); }
-    function openTodo() { showSection('todo-section'); }
-    function goHome() { showSection('home-section'); updateHomeDashboard(); }
+
+    function openSchedule() { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('schedule-section').classList.add('active'); renderCalendar(1); }
+    function openTodo() { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('todo-section').classList.add('active'); }
+    function goHome() { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('home-section').classList.add('active'); updateHomeDashboard(); }
 
     function addTodo() {
         const input = document.getElementById('todoInput'); if(!input.value) return;
