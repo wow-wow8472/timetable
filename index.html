@@ -21,43 +21,34 @@
         }
         body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; }
         header { background: #222; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.5rem; }
-        
         .section { display: none; padding: 15px; box-sizing: border-box; }
         .section.active { display: block; }
-
         .dashboard { background: white; border-radius: 15px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #eee; }
         .timeline-scroll-area { width: 100%; border: 1px solid #eee; border-radius: 8px; overflow: hidden; display: flex; background: white; }
         .time-column { width: 65px; background: #f8f9fa; border-right: 1px solid #eee; flex-shrink: 0; position: relative; height: 722px; }
         .time-label { position: absolute; width: 100%; text-align: center; font-size: 14px; font-weight: 700; color: #444; height: 38px; line-height: 38px; top: 0; }
         .timeline-container { position: relative; height: 722px; flex-grow: 1; background: white; background-image: linear-gradient(#eee 1px, transparent 1px); background-size: 100% 38px; }
         .now-indicator { position: absolute; left: 0; right: 0; height: 2px; background: var(--now-line); z-index: 20; display: none; pointer-events: none; }
-
         .ev, .cal-ev { position: absolute; border-radius: 4px; border-left: 2px solid rgba(0,0,0,0.1); z-index: 5; overflow: hidden; display: flex; flex-direction: column; word-break: keep-all; }
         .ev { left: 2px; right: 2px; padding: 4px; }
         .cal-ev { left: 1px; right: 1px; padding: 2px; }
-
         .half-left { right: 51% !important; }
         .half-right { left: 51% !important; }
-
         .split-check-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; z-index: 1; pointer-events: none; }
         .hw-part, .rev-part { flex: 1; height: 100%; }
         .hw-part.active { background: var(--chk-hw); }
         .rev-part.active { background: var(--chk-rev); }
-
         .ev-content { position: relative; z-index: 2; pointer-events: none; width: 100%; }
         .ev b { font-size: clamp(12px, 1.4vw, 18px); line-height: 1.1; margin-bottom: 2px; display: block; }
         .ev span { font-size: clamp(10px, 1.1vw, 14px); font-weight: 700; opacity: 0.9; }
-
         .cal-ev b { font-size: clamp(9px, 1vw, 13px); line-height: 1.05; display: block; }
         .cal-ev span { font-size: clamp(8px, 0.8vw, 11px); display: block; margin-top: 1px; opacity: 0.8; }
-
         .calendar-wrapper { width: 100%; border-radius: 8px; overflow: hidden; }
         .grid-container { display: grid; grid-template-columns: repeat(7, 1fr); background: #eee; width: 100%; }
         .day-header { background: #f8f9fa; padding: 8px 0; text-align: center; font-weight: bold; }
         .day-cell { background: white; height: 350px; position: relative; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
         .day-num { padding: 6px; font-weight: bold; }
         .is-red { color: var(--sunday-red) !important; }
-
         .edit-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; background: #f9f9f9; padding: 15px; border-radius: 12px; border: 1px solid #ddd; }
         .edit-btn { background: #444; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
         .edit-active .edit-btn { background: #ff4d4d; }
@@ -65,7 +56,6 @@
         .guide-row { display: flex; gap: 15px; font-size: 0.9rem; font-weight: bold; justify-content: center; }
         .guide-item { display: flex; align-items: center; gap: 5px; }
         .box-sample { width: 14px; height: 14px; border-radius: 2px; }
-
         .math-br { background: var(--math-br); color: #0d47a1; }
         .math-ryu { background: var(--math-ryu); color: #00695c; }
         .math-dw { background: var(--math-dw); color: #4a148c; }
@@ -75,7 +65,6 @@
         .algo-hc { background: var(--algo-hc); color: #1b5e20; }
         .algo-os { background: var(--algo-os); color: #33691e; }
         .hldy { background: var(--holiday); color: #854d0e; text-align: center; font-weight: bold; }
-
         .nav-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
         .menu-btn-large { background: #222; color: white; border: none; padding: 25px; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 1.4rem; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .back-btn-huge { background: #444; color: white; border: none; width: 100%; padding: 20px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; font-size: 1.3rem; font-weight: bold; }
@@ -134,7 +123,6 @@
 </section>
 
 <script>
-    // --- Firebase 초기화 ---
     const firebaseConfig = {
         apiKey: "AIzaSyA5TchtCroGefUyHb7ELwim-p9FQ-wETNk",
         authDomain: "vac-828ed.firebaseapp.com",
@@ -152,7 +140,6 @@
     let todoList = [];
     let currentMonth = new Date().getMonth() + 1;
 
-    // 데이터베이스 실시간 리스너
     db.ref('checks').on('value', (snapshot) => {
         checkData = snapshot.val() || {};
         if (document.getElementById('schedule-section').classList.contains('active')) renderCalendar(currentMonth);
@@ -203,7 +190,10 @@
     function getDaySchedule(m, d) {
         const dateObj = new Date(2026, m - 1, d); const day = dateObj.getDay();
         let s = [];
-        if (m === 1 && d === 1) {
+        // 1월 3일 양기선 수업 제거 (토요일=6이지만 수동 예외처리)
+        if (m === 1 && d === 3) {
+            s = baseSchedule[6].filter(ev => !ev.n.includes('양기선'));
+        } else if (m === 1 && d === 1) {
             s = [{n:'확통(다원)김찬용', s:'10:00', e:'13:00', h:10, dur:3, c:'math-dw'}, {n:'확통(다원)김찬용', s:'19:00', e:'22:00', h:19, dur:3, c:'math-dw'}];
         } else if (m === 2) {
             if (d === 12) {
@@ -236,11 +226,9 @@
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const isLeft = x < rect.width / 2;
-        
         let currentStatus = (checkData[dateKey] && checkData[dateKey][taskIdx]) || { hw: false, rev: false };
         if (isLeft) currentStatus.hw = !currentStatus.hw;
         else currentStatus.rev = !currentStatus.rev;
-
         db.ref(`checks/${dateKey}/${taskIdx}`).set(currentStatus);
     }
 
@@ -309,13 +297,19 @@
         else if(line) line.style.display = 'none';
     }
 
-    function navigateTo(id) {
+    function navigateTo(id, saveHistory = true) {
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
+        if (saveHistory) { history.pushState({ sectionId: id }, '', `#${id}`); }
         if(id === 'home-section') updateHomeDashboard();
         if(id === 'schedule-section') { isEditMode = false; renderCalendar(currentMonth); }
         if(id === 'todo-section') loadTodos();
     }
+
+    window.onpopstate = function(event) {
+        if (event.state && event.state.sectionId) { navigateTo(event.state.sectionId, false); }
+        else { navigateTo('home-section', false); }
+    };
 
     function addTodo() {
         const input = document.getElementById('todoInput'); if(!input.value) return;
@@ -345,6 +339,7 @@
         }
         updateClockAndLine();
         setInterval(updateClockAndLine, 1000);
+        history.replaceState({ sectionId: 'home-section' }, '', '#home-section');
     };
 </script>
 </body>
