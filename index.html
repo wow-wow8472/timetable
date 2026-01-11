@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
-    <title>2026 Winter Master (Urgent HW Sync)</title>
+    <title>2026 Winter Master (Side-by-Side View)</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
@@ -25,6 +25,20 @@
         header { background: #222; color: white; padding: 20px; text-align: center; font-weight: bold; font-size: 1.5rem; }
         .section { display: none; padding: 15px; box-sizing: border-box; }
         .section.active { display: block; }
+
+        /* 가로 모드 레이아웃 타격 수정 */
+        @media (min-width: 1024px) {
+            #home-section.active {
+                display: flex;
+                gap: 20px;
+                max-width: 1400px;
+                margin: 0 auto;
+                align-items: flex-start;
+            }
+            .main-content { flex: 1.2; } /* 시간표 영역 */
+            .side-content { flex: 0.8; position: sticky; top: 20px; } /* 버튼 영역 */
+        }
+
         .dashboard { background: white; border-radius: 15px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #eee; }
         .timeline-scroll-area { width: 100%; border: 1px solid #eee; border-radius: 8px; overflow: hidden; display: flex; background: white; }
         .time-column { width: 65px; background: #f8f9fa; border-right: 1px solid #eee; flex-shrink: 0; position: relative; height: 722px; }
@@ -79,22 +93,27 @@
 <header>2026 Winter Master</header>
 
 <section id="home-section" class="section active">
-    <div class="dashboard">
-        <h2 id="todayDate" style="font-size:1.2rem; margin:5px 0 2px 0;"></h2>
-        <p id="statusMessage" style="font-size:1.1rem; font-weight:bold; color:#d32f2f; margin:0 0 10px 0;"></p>
-        
-        <div class="timeline-scroll-area">
-            <div class="time-column" id="timeLabels"></div>
-            <div class="timeline-container" id="todayTimeline">
-                <div id="nowLineHome" class="now-indicator"></div>
+    <div class="main-content">
+        <div class="dashboard">
+            <h2 id="todayDate" style="font-size:1.2rem; margin:5px 0 2px 0;"></h2>
+            <p id="statusMessage" style="font-size:1.1rem; font-weight:bold; color:#d32f2f; margin:0 0 10px 0;"></p>
+            
+            <div class="timeline-scroll-area">
+                <div class="time-column" id="timeLabels"></div>
+                <div class="timeline-container" id="todayTimeline">
+                    <div id="nowLineHome" class="now-indicator"></div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="nav-stack">
-        <button class="menu-btn-large" onclick="navigateTo('todo-section')">✅ 할 일 체크하기</button>
-        <button class="menu-btn-large" style="background: #d32f2f;" onclick="navigateTo('urgent-section')">🚨 급한 숙제 확인하기</button>
-        <button class="menu-btn-large" onclick="navigateTo('schedule-section')">🗓️ 전체 달력 보기</button>
-        <a href="https://www.youtube.com/playlist?list=PL0yYc0K1-YryjgZ6AONKyBP9VjiYwTDWv" target="_blank" class="menu-btn-large">🎵 배경 음악 재생 (YouTube)</a>
+
+    <div class="side-content">
+        <div class="nav-stack">
+            <button class="menu-btn-large" onclick="navigateTo('todo-section')">✅ 할 일 체크하기</button>
+            <button class="menu-btn-large" style="background: #d32f2f;" onclick="navigateTo('urgent-section')">🚨 급한 숙제 확인하기</button>
+            <button class="menu-btn-large" onclick="navigateTo('schedule-section')">🗓️ 전체 달력 보기</button>
+            <a href="https://www.youtube.com/playlist?list=PL0yYc0K1-YryjgZ6AONKyBP9VjiYwTDWv" target="_blank" class="menu-btn-large">🎵 배경 음악 재생 (YouTube)</a>
+        </div>
     </div>
 </section>
 
@@ -417,7 +436,6 @@
         getDaySchedule(m, d).forEach((ev, idx) => { container.appendChild(createEvElement(ev, `2026-${m}-${d}`, idx, false)); });
     }
 
-    // 타격 수정: 기상 기준 상태 문구 업데이트 로직
     function updateClockAndLine() {
         const now = new Date();
         const m = now.getMonth() + 1; const d = now.getDate();
@@ -440,27 +458,18 @@
                 return `${mm}분 ${ss}초`;
             }
 
-            // 1. 자정(0시) ~ 새벽 5시 30분 사이일 때 -> 일어나기까지 카운트다운
             if (nowH >= 0 && nowH < 5.5) {
                 msgEl.innerText = `일어나기까지 ${getDiffStr(5.5)} 남았습니다.`;
             } else {
-                // 2. 5시 30분 이후 로직 (수업 중 / 다음 수업 대기 / 잠들기 대기)
                 let currentClass = null;
                 let nextClass = null;
-
                 sched.forEach(ev => {
                     if (nowH >= ev.h && nowH < (ev.h + ev.dur)) currentClass = ev;
                     else if (nowH < ev.h && (!nextClass || ev.h < nextClass.h)) nextClass = ev;
                 });
-
-                if (currentClass) {
-                    msgEl.innerText = `수업시간 ${getDiffStr(currentClass.h + currentClass.dur)} 남았습니다.`;
-                } else if (nextClass) {
-                    msgEl.innerText = `다음 수업 ${getDiffStr(nextClass.h)} 남았습니다.`;
-                } else {
-                    // 더 이상 남은 수업이 없을 때 자정(24시)까지 잠들기 카운트다운
-                    msgEl.innerText = `잠들기까지 ${getDiffStr(24)} 남았습니다.`;
-                }
+                if (currentClass) msgEl.innerText = `수업시간 ${getDiffStr(currentClass.h + currentClass.dur)} 남았습니다.`;
+                else if (nextClass) msgEl.innerText = `다음 수업 ${getDiffStr(nextClass.h)} 남았습니다.`;
+                else msgEl.innerText = `잠들기까지 ${getDiffStr(24)} 남았습니다.`;
             }
         }
 
