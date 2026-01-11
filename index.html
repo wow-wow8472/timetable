@@ -107,13 +107,13 @@
         <a href="https://www.youtube.com/playlist?list=PL0yYc0K1-YryjgZ6AONKyBP9VjiYwTDWv" target="_blank" class="menu-btn-large">
             🎵 배경 음악 재생 (YouTube)
         </a>
-        <button class="menu-btn-large" onclick="openSchedule()">🗓️ 전체 달력 보기</button>
-        <button class="menu-btn-large" onclick="openTodo()">✅ 할 일 체크하기</button>
+        <button class="menu-btn-large" onclick="navigateTo('schedule-section')">🗓️ 전체 달력 보기</button>
+        <button class="menu-btn-large" onclick="navigateTo('todo-section')">✅ 할 일 체크하기</button>
     </div>
 </section>
 
 <section id="schedule-section" class="section">
-    <button class="back-btn-huge" onclick="goHome()">🏠 홈으로 돌아가기</button>
+    <button class="back-btn-huge" onclick="window.history.back()">🏠 홈으로 돌아가기</button>
     <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; justify-content: center;">
         <button onclick="renderCalendar(1)" style="padding:15px 30px; font-size:1.2rem; font-weight:bold; border-radius:10px; border:1px solid #ccc; background:white;">1월</button>
         <button onclick="renderCalendar(2)" style="padding:15px 30px; font-size:1.2rem; font-weight:bold; border-radius:10px; border:1px solid #ccc; background:white;">2월</button>
@@ -125,7 +125,7 @@
 </section>
 
 <section id="todo-section" class="section">
-    <button class="back-btn-huge" onclick="goHome()">🏠 홈으로 돌아가기</button>
+    <button class="back-btn-huge" onclick="window.history.back()">🏠 홈으로 돌아가기</button>
     <div class="dashboard">
         <h2 style="font-size:1.2rem;">📋 To-do List</h2>
         <div style="display:flex; gap:10px; margin-bottom:20px;">
@@ -184,12 +184,34 @@
         return baseSchedule[day] || [];
     }
 
-    // [초 단위 시계 및 빨간 선 업데이트 통합 실행]
+    // --- 네비게이션 로직 수정 ---
+    function navigateTo(sectionId) {
+        history.pushState({section: sectionId}, '', `#${sectionId}`);
+        showSection(sectionId);
+    }
+
+    window.onpopstate = function(event) {
+        if (event.state && event.state.section) {
+            showSection(event.state.section);
+        } else {
+            showSection('home-section');
+        }
+    };
+
+    function showSection(sectionId) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(sectionId).classList.add('active');
+        if(sectionId === 'home-section') updateHomeDashboard();
+        if(sectionId === 'schedule-section') renderCalendar(new Date().getMonth() + 1);
+    }
+
     window.onload = function() { 
         createTimeLabels(); 
         updateHomeDashboard(); 
         loadTodos(); 
-        setInterval(updateClockAndLine, 1000); // 1초마다 시계와 선 위치 업데이트
+        setInterval(updateClockAndLine, 1000);
+        // 첫 진입 시 상태 기록
+        history.replaceState({section: 'home-section'}, '', '');
     };
 
     function updateHomeDashboard() {
@@ -207,27 +229,24 @@
 
     function updateClockAndLine() {
         const now = new Date();
-        const m = now.getMonth() + 1;
-        const d = now.getDate();
-        
-        // 1. 실시간 시계 업데이트 (초 단위 포함)
         const dateStr = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
         const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        document.getElementById('todayDate').innerText = `${dateStr} ${timeStr} 일정`;
+        const dateEl = document.getElementById('todayDate');
+        if(dateEl) dateEl.innerText = `${dateStr} ${timeStr} 일정`;
 
-        // 2. 빨간 선 위치 업데이트
         const h = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
         const line = document.getElementById('nowLineHome');
-        if (h >= 6 && h <= 24) { 
+        if (line && h >= 6 && h <= 24) { 
             line.style.top = (h - 6) * 38 + 'px'; 
             line.style.display = 'block'; 
-        } else { 
+        } else if(line) { 
             line.style.display = 'none'; 
         }
     }
 
     function renderCalendar(m) {
         const grid = document.getElementById('calendarGrid');
+        if(!grid) return;
         document.getElementById('monthTitle').innerText = `${m}월`; grid.innerHTML = '';
         ['일','월','화','수','목','금','토'].forEach(d => grid.innerHTML += `<div class="day-header">${d}</div>`);
         const first = new Date(2026, m-1, 1).getDay(); const last = new Date(2026, m, 0).getDate();
@@ -246,9 +265,7 @@
             grid.innerHTML += `<div class="day-cell">${html}</div>`;
         }
     }
-    function openSchedule() { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('schedule-section').classList.add('active'); renderCalendar(1); }
-    function openTodo() { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('todo-section').classList.add('active'); }
-    function goHome() { document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); document.getElementById('home-section').classList.add('active'); updateHomeDashboard(); }
+
     function addTodo() {
         const input = document.getElementById('todoInput'); if(!input.value) return;
         const list = JSON.parse(localStorage.getItem('winter_v10') || '[]');
@@ -256,7 +273,8 @@
         input.value = ''; loadTodos();
     }
     function loadTodos() {
-        const el = document.getElementById('todoList'); const list = JSON.parse(localStorage.getItem('winter_v10') || '[]');
+        const el = document.getElementById('todoList'); if(!el) return;
+        const list = JSON.parse(localStorage.getItem('winter_v10') || '[]');
         el.innerHTML = list.length ? '' : '<p style="color:#999; text-align:center;">할 일이 없습니다.</p>';
         list.forEach((t, i) => {
             const div = document.createElement('div'); div.style = "display:flex; align-items:center; padding:15px 0; border-bottom:1px solid #f0f0f0;";
