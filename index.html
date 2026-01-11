@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
     <title>2026 Winter Master</title>
     <style>
         :root {
@@ -14,57 +14,56 @@
             --holiday: #fffde7;
             --now-line: #ff4d4d;
         }
-        body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; overflow-x: auto; }
-        header { background: #222; color: white; padding: 15px; text-align: center; font-weight: bold; width: 100%; box-sizing: border-box; }
+        body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; }
+        header { background: #222; color: white; padding: 15px; text-align: center; font-weight: bold; }
         
-        .section { display: none; padding: 15px; box-sizing: border-box; width: 100%; }
+        .section { display: none; padding: 10px; box-sizing: border-box; }
         .section.active { display: block; }
 
-        .dashboard { background: white; border-radius: 15px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #eee; }
+        .dashboard { background: white; border-radius: 15px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 15px; border: 1px solid #eee; }
         
-        /* [수정] 휴대폰 한 화면에 최대한 들어오도록 너비 설정 유지 및 스크롤 최적화 */
+        /* [핵심 수정] 가로 스크롤을 아예 없애기 위해 너비를 100%로 고정합니다 */
         .timeline-scroll-area { 
             width: 100%; 
-            overflow-x: auto; 
             border: 1px solid #eee; 
             border-radius: 8px;
-            -webkit-overflow-scrolling: touch;
+            overflow: hidden; /* 가로 스크롤 강제 제거 */
         }
         .timeline-container { 
             position: relative; 
             height: 600px; 
-            min-width: 320px; /* 아이폰 미니 등 작은 폰에서도 안 깨지게 조정 */
+            width: 100%; /* 너비를 화면에 맞춤 */
             background: white; 
             overflow-y: auto;
         }
 
         .now-indicator { position: absolute; left: 0; right: 0; height: 2px; background: var(--now-line); z-index: 20; display: none; pointer-events: none; }
 
+        /* 글자가 겹치지 않게 크기를 더 최적화했습니다 */
         .ev { 
-            position: absolute; left: 4px; right: 4px; padding: 4px 6px; border-radius: 6px; 
-            font-size: 11px; line-height: 1.2; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-            display: flex; flex-direction: column; border-left: 3px solid rgba(0,0,0,0.1);
+            position: absolute; left: 2px; right: 2px; padding: 4px; border-radius: 4px; 
+            font-size: 10px; line-height: 1.1; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            display: flex; flex-direction: column; border-left: 2px solid rgba(0,0,0,0.1);
             z-index: 5;
-            word-break: keep-all; 
-            overflow: hidden;
+            word-break: break-all; 
         }
-        .ev b { font-size: 10px; margin-bottom: 2px; display: block; color: inherit; }
-        .ev span { font-size: 9px; font-weight: bold; opacity: 0.8; }
+        .ev b { font-size: 10px; margin-bottom: 1px; display: block; }
+        .ev span { font-size: 8px; opacity: 0.8; }
 
         .ev.half-left { right: 51% !important; }
         .ev.half-right { left: 51% !important; }
 
-        /* 달력 부분도 한 화면에 잘 들어오도록 수정 */
-        .calendar-wrapper { width: 100%; overflow-x: auto; border-radius: 8px; -webkit-overflow-scrolling: touch; }
+        /* 달력도 가로 스크롤 없이 한눈에 들어오게 조정 */
+        .calendar-wrapper { width: 100%; border-radius: 8px; overflow: hidden; }
         .grid-container { 
             display: grid; 
             grid-template-columns: repeat(7, 1fr); 
             background: #eee; 
-            min-width: 600px; /* 너무 좁아지지 않게 유지하되 두 손가락 확대를 위해 설정 */
+            width: 100%; /* 고정 너비 제거 */
         }
-        .day-header { background: #f8f9fa; padding: 10px; text-align: center; font-weight: bold; font-size: 11px; }
-        .day-cell { background: white; height: 350px; position: relative; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
-        .day-num { padding: 5px; font-weight: bold; font-size: 10px; }
+        .day-header { background: #f8f9fa; padding: 5px; text-align: center; font-weight: bold; font-size: 9px; }
+        .day-cell { background: white; height: 280px; position: relative; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
+        .day-num { padding: 3px; font-weight: bold; font-size: 9px; }
 
         .math-br { background: var(--math-br); color: #0d47a1; }
         .math-ryu { background: var(--math-ryu); color: #00695c; }
@@ -74,11 +73,11 @@
         .phys-br { background: var(--phys-br); color: #b71c1c; }
         .algo-hc { background: var(--algo-hc); color: #1b5e20; }
         .algo-os { background: var(--algo-os); color: #33691e; }
-        .hldy { background: var(--holiday); color: #854d0e; text-align: center; font-weight: bold; font-size: 10px; }
+        .hldy { background: var(--holiday); color: #854d0e; text-align: center; font-weight: bold; font-size: 8px; }
 
         .nav-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .menu-btn { background: white; border: 1px solid #ddd; padding: 20px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 14px; }
-        .back-btn { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; }
+        .menu-btn { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .back-btn { background: #444; color: white; border: none; padding: 8px 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -87,7 +86,7 @@
 
 <section id="home-section" class="section active">
     <div class="dashboard">
-        <h2 id="todayDate" style="font-size:1.1rem; margin-top:0;">오늘의 시간표</h2>
+        <h2 id="todayDate" style="font-size:1rem; margin-top:0;">오늘의 시간표</h2>
         <div class="timeline-scroll-area">
             <div class="timeline-container" id="todayTimeline">
                 <div id="nowLineHome" class="now-indicator"></div>
@@ -102,10 +101,10 @@
 
 <section id="schedule-section" class="section">
     <button class="back-btn" onclick="goHome()">🏠 홈으로</button>
-    <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
-        <button onclick="renderCalendar(1)" style="padding:8px 15px;">1월</button>
-        <button onclick="renderCalendar(2)" style="padding:8px 15px;">2월</button>
-        <strong id="monthTitle" style="font-size: 1.1rem; margin-left: 10px;"></strong>
+    <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: center;">
+        <button onclick="renderCalendar(1)" style="padding:5px 10px; font-size:12px;">1월</button>
+        <button onclick="renderCalendar(2)" style="padding:5px 10px; font-size:12px;">2월</button>
+        <strong id="monthTitle" style="font-size: 1rem; margin-left: 5px;"></strong>
     </div>
     <div class="calendar-wrapper">
         <div class="grid-container" id="calendarGrid"></div>
@@ -115,17 +114,16 @@
 <section id="todo-section" class="section">
     <button class="back-btn" onclick="goHome()">🏠 홈으로</button>
     <div class="dashboard">
-        <h2>📋 To-do List</h2>
-        <div style="display:flex; gap:10px; margin-bottom:20px;">
-            <input type="text" id="todoInput" style="flex:1; padding:12px; border:1px solid #ddd; border-radius:8px;" placeholder="할 일을 입력하세요">
-            <button onclick="addTodo()" style="padding:0 20px; background:#222; color:white; border:none; border-radius:8px;">추가</button>
+        <h2 style="font-size:1rem;">📋 To-do List</h2>
+        <div style="display:flex; gap:8px; margin-bottom:15px;">
+            <input type="text" id="todoInput" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:12px;" placeholder="할 일 입력">
+            <button onclick="addTodo()" style="padding:0 15px; background:#222; color:white; border:none; border-radius:8px; font-size:12px;">추가</button>
         </div>
-        <div id="todoList"></div>
+        <div id="todoList" style="font-size:12px;"></div>
     </div>
 </section>
 
 <script>
-    // [기존 로직 동일]
     const baseSchedule = {
         1: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol', p:'half-left'}, {n:'물리(브밸)장재필', s:'19:20', e:'22:10', h:19.33, dur:2.8, c:'phys-br', p:'half-right'}],
         2: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'한컴 알고리즘', s:'13:00', e:'14:50', h:13, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}],
@@ -199,9 +197,9 @@
             let html = `<div class="day-num">${d}</div>`;
             const dailyData = getDaySchedule(m, d);
             dailyData.forEach(ev => {
-                const top = (ev.h - 6) * 20 + 20;
-                html += `<div class="ev ${ev.c} ${ev.p || ''}" style="top:${top}px; height:${ev.dur*20}px; font-size:9px; padding:2px;">
-                            <b style="font-size:8px;">${ev.n}</b>
+                const top = (ev.h - 6) * 15 + 15;
+                html += `<div class="ev ${ev.c} ${ev.p || ''}" style="top:${top}px; height:${ev.dur*15}px; font-size:7px; padding:1px;">
+                            <b style="font-size:7px;">${ev.n}</b>
                          </div>`;
             });
             grid.innerHTML += `<div class="day-cell">${html}</div>`;
