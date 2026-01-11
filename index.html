@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
-    <title>2026 Winter Master (Final Sync)</title>
+    <title>2026 Winter Master (Urgent HW Sync)</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
@@ -12,6 +12,7 @@
             --math-br: #e3f2fd; --math-ryu: #e0f2f1;
             --math-dw: #f3e5f5; --math-ws: #e8eaf6;
             --phys-sol: #fff3e0; --phys-br: #ffebee;
+            --phys-yang: #e1f5fe;
             --algo-hc: #e8f5e9; --algo-os: #f1f8e9;
             --holiday: #fffde7;
             --now-line: #ff4d4d;
@@ -61,12 +62,17 @@
         .math-ws { background: var(--math-ws); color: #1a237e; }
         .phys-sol { background: var(--phys-sol); color: #e65100; }
         .phys-br { background: var(--phys-br); color: #b71c1c; }
+        .phys-yang { background: var(--phys-yang); color: #01579b; }
         .algo-hc { background: var(--algo-hc); color: #1b5e20; }
         .algo-os { background: var(--algo-os); color: #33691e; }
         .hldy { background: var(--holiday); color: #854d0e; text-align: center; font-weight: bold; }
         .nav-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
         .menu-btn-large { background: #222; color: white; border: none; padding: 25px; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 1.4rem; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .back-btn-huge { background: #444; color: white; border: none; width: 100%; padding: 20px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; font-size: 1.3rem; font-weight: bold; }
+        /* 급한 숙제 스타일 */
+        .urgent-item { background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 8px solid #ff4d4d; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .urgent-item h3 { margin: 0 0 5px 0; font-size: 1.2rem; color: #222; }
+        .urgent-item p { margin: 0; color: #666; font-size: 1rem; }
     </style>
 </head>
 <body>
@@ -84,9 +90,19 @@
         </div>
     </div>
     <div class="nav-stack">
-        <a href="https://www.youtube.com/playlist?list=PL0yYc0K1-YryjgZ6AONKyBP9VjiYwTDWv" target="_blank" class="menu-btn-large">🎵 배경 음악 재생 (YouTube)</a>
-        <button class="menu-btn-large" onclick="navigateTo('schedule-section')">🗓️ 전체 달력 보기</button>
         <button class="menu-btn-large" onclick="navigateTo('todo-section')">✅ 할 일 체크하기</button>
+        <button class="menu-btn-large" style="background: #d32f2f;" onclick="navigateTo('urgent-section')">🚨 급한 숙제 확인하기</button>
+        <button class="menu-btn-large" onclick="navigateTo('schedule-section')">🗓️ 전체 달력 보기</button>
+        <a href="https://www.youtube.com/playlist?list=PL0yYc0K1-YryjgZ6AONKyBP9VjiYwTDWv" target="_blank" class="menu-btn-large">🎵 배경 음악 재생 (YouTube)</a>
+    </div>
+</section>
+
+<section id="urgent-section" class="section">
+    <button class="back-btn-huge" onclick="handleBackBtn()">🏠 홈으로 돌아가기</button>
+    <div class="dashboard">
+        <h2 style="font-size:1.3rem; color:#d32f2f;">🚨 완료되지 않은 직전 숙제</h2>
+        <p style="font-size:0.9rem; color:#666; margin-bottom:20px;">예정된 수업의 직전 수업 숙제가 미완료된 항목입니다.</p>
+        <div id="urgentList"></div>
     </div>
 </section>
 
@@ -147,6 +163,7 @@
         if(id === 'home-section') updateHomeDashboard();
         if(id === 'schedule-section') { isEditMode = false; currentMonth = new Date().getMonth() + 1; renderCalendar(currentMonth); }
         if(id === 'todo-section') loadTodos();
+        if(id === 'urgent-section') updateUrgentList();
         window.scrollTo(0,0);
     }
 
@@ -159,14 +176,6 @@
         if (history.state && history.state.sectionId !== 'home-section') history.back();
         else navigateTo('home-section');
     }
-
-    // 컴퓨터 단축키 (Alt + ←) 만 유지
-    window.addEventListener('keydown', (e) => {
-        if (e.altKey && e.key === 'ArrowLeft') {
-            e.preventDefault();
-            handleBackBtn();
-        }
-    });
 
     db.ref('autoAddedHistory').once('value', (snap) => {
         autoAddLog = snap.val() || {};
@@ -189,7 +198,7 @@
         3: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol'}],
         4: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'미적(브밸)류우성', s:'13:00', e:'16:00', h:13, dur:3, c:'math-ryu'}, {n:'미적(원솔)김기현', s:'18:00', e:'22:00', h:18, dur:4, c:'math-ws'}],
         5: [{n:'원솔 알고리즘', s:'09:30', e:'13:30', h:9.5, dur:4, c:'algo-os'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'17:00', e:'18:50', h:17, dur:1.8, c:'algo-hc'}],
-        6: [{n:'확통(다원)김찬용', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-dw', p:'half-left'}, {n:'미적(브밸)류우성', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-ryu', p:'half-right'}, {n:'물리(브밸)양기선', s:'16:00', e:'19:20', h:16, dur:3.33, c:'phys-br'}]
+        6: [{n:'확통(다원)김찬용', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-dw', p:'half-left'}, {n:'미적(브밸)류우성', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-ryu', p:'half-right'}, {n:'물리(브밸)양기선', s:'16:00', e:'19:20', h:16, dur:3.33, c:'phys-yang'}]
     };
 
     function backfillPastTodos() {
@@ -276,6 +285,76 @@
         } else s = baseSchedule[day] || [];
         return mergeSchedules(s);
     }
+
+    function updateUrgentList() {
+        const listEl = document.getElementById('urgentList');
+        listEl.innerHTML = '';
+        const now = new Date();
+        const nowTime = now.getTime();
+        
+        let urgentFound = false;
+        let processedClasses = new Set(); 
+
+        for (let i = 0; i < 7; i++) {
+            let futureDate = new Date(now);
+            futureDate.setDate(now.getDate() + i);
+            let m = futureDate.getMonth() + 1;
+            let d = futureDate.getDate();
+            let sched = getDaySchedule(m, d);
+
+            sched.forEach(ev => {
+                if (ev.c === 'hldy') return; 
+                if (processedClasses.has(ev.n)) return;
+
+                let prevInfo = findPreviousClass(ev.n, futureDate);
+                
+                if (prevInfo) {
+                    const [endH, endM] = prevInfo.event.e.split(':').map(Number);
+                    const prevEndDate = new Date(2026, prevInfo.m - 1, prevInfo.d, endH, endM).getTime();
+                    
+                    if (prevEndDate < nowTime) {
+                        const saved = (checkData[prevInfo.dateKey] && checkData[prevInfo.dateKey][prevInfo.idx]) || { hw: false };
+                        const auto = getAutoStatus(prevInfo.event, prevInfo.dateKey);
+                        const isDone = auto.autoHw || saved.hw;
+
+                        if (!isDone) {
+                            urgentFound = true;
+                            processedClasses.add(ev.n); 
+
+                            const item = document.createElement('div');
+                            item.className = 'urgent-item';
+                            item.innerHTML = `
+                                <h3>${ev.n}</h3>
+                                <p>수업 예정: ${m}월 ${d}일 (${formatTimeShort(ev.s)})</p>
+                                <p style="margin-top:5px; color:#d32f2f; font-weight:bold;">📍 미완료: ${prevInfo.m}월 ${prevInfo.d}일 수업 숙제</p>
+                            `;
+                            listEl.appendChild(item);
+                        }
+                    }
+                }
+            });
+        }
+        if (!urgentFound) {
+            listEl.innerHTML = '<p style="text-align:center; padding:40px; color:#999;">현재 밀린 숙제가 없습니다. 완벽해요! 👏</p>';
+        }
+    }
+
+    function findPreviousClass(className, baseDate) {
+        for (let j = 1; j <= 14; j++) { 
+            let pDate = new Date(baseDate);
+            pDate.setDate(baseDate.getDate() - j);
+            let pm = pDate.getMonth() + 1;
+            let pd = pDate.getDate();
+            let pSched = getDaySchedule(pm, pd);
+            for (let k = pSched.length - 1; k >= 0; k--) {
+                if (pSched[k].n === className) {
+                    return { dateKey: `2026-${pm}-${pd}`, idx: k, m: pm, d: pd, event: pSched[k] };
+                }
+            }
+        }
+        return null;
+    }
+
     function getAutoStatus(ev, dateKey) {
         const [targetY, targetM, targetD] = dateKey.split('-').map(Number);
         const now = new Date(); const currentH = now.getHours() + now.getMinutes() / 60;
@@ -289,6 +368,7 @@
         }
         return { autoHw, autoRev, hwLocked, revLocked };
     }
+
     function handleTaskClick(e, dateKey, taskIdx, ev) {
         if (!isEditMode) return;
         const auto = getAutoStatus(ev, dateKey);
@@ -299,6 +379,7 @@
         if (isLeft) currentStatus.hw = !currentStatus.hw; else currentStatus.rev = !currentStatus.rev;
         db.ref(`checks/${dateKey}/${taskIdx}`).set(currentStatus);
     }
+
     function createEvElement(ev, dateKey, idx, isCalendar) {
         const div = document.createElement('div');
         div.className = `${isCalendar ? 'cal-ev' : 'ev'} ${ev.c} ${ev.p || ''}`;
@@ -316,6 +397,7 @@
         `;
         return div;
     }
+
     function renderCalendar(m) {
         currentMonth = m; const grid = document.getElementById('calendarGrid'); if(!grid) return;
         document.getElementById('monthTitle').innerText = `${m}월`; grid.innerHTML = '';
@@ -332,12 +414,14 @@
             grid.appendChild(cell);
         }
     }
+
     function updateHomeDashboard() {
         const now = new Date(); const m = now.getMonth() + 1; const d = now.getDate();
         const container = document.getElementById('todayTimeline'); if(!container) return;
         container.querySelectorAll('.ev').forEach(e => e.remove());
         getDaySchedule(m, d).forEach((ev, idx) => { container.appendChild(createEvElement(ev, `2026-${m}-${d}`, idx, false)); });
     }
+
     function updateClockAndLine() {
         const now = new Date();
         const dateStr = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
@@ -349,16 +433,19 @@
         else if(line) line.style.display = 'none';
         if (now.getSeconds() === 0) { updateHomeDashboard(); backfillPastTodos(); }
     }
+
     function toggleEditMode() {
         isEditMode = !isEditMode; const btn = document.getElementById('editToggleBtn');
         const section = document.getElementById('schedule-section');
         if (isEditMode) { btn.innerText = "✅ 수정 완료 (저장됨)"; section.classList.add('edit-active'); }
         else { btn.innerText = "🛠️ 수정 모드 시작"; section.classList.remove('edit-active'); }
     }
+
     function addTodo() {
         const input = document.getElementById('todoInput'); if(!input.value) return;
         db.ref('todos').set([...todoList, { text: input.value, done: false }]); input.value = '';
     }
+
     function loadTodos() {
         const el = document.getElementById('todoList'); if(!el) return;
         el.innerHTML = todoList.length ? '' : '<p style="color:#999; text-align:center;">할 일이 없습니다.</p>';
@@ -368,6 +455,7 @@
             el.appendChild(div);
         });
     }
+
     function deleteTodoImmediate(i) { todoList.splice(i, 1); db.ref('todos').set(todoList); }
 
     window.onload = () => {
