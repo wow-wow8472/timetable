@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, user-scalable=yes">
     <title>2026 Winter Master</title>
     <style>
         :root {
@@ -14,32 +14,32 @@
             --holiday: #fffde7;
             --now-line: #ff4d4d;
         }
-        body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; }
-        header { background: #222; color: white; padding: 15px; text-align: center; font-weight: bold; }
+        body { margin: 0; font-family: 'Pretendard', sans-serif; background: var(--bg); color: #333; overflow-x: auto; }
+        header { background: #222; color: white; padding: 15px; text-align: center; font-weight: bold; width: 100%; box-sizing: border-box; }
         
-        .section { display: none; padding: 15px; }
+        .section { display: none; padding: 15px; box-sizing: border-box; width: 100%; }
         .section.active { display: block; }
 
         .dashboard { background: white; border-radius: 15px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #eee; }
         
-        /* [설정 유지] 가로 스크롤 영역 - 글씨가 찌부러지는 것을 방지 */
+        /* [수정] 휴대폰 한 화면에 최대한 들어오도록 너비 설정 유지 및 스크롤 최적화 */
         .timeline-scroll-area { 
             width: 100%; 
             overflow-x: auto; 
             border: 1px solid #eee; 
             border-radius: 8px;
+            -webkit-overflow-scrolling: touch;
         }
         .timeline-container { 
             position: relative; 
             height: 600px; 
-            min-width: 450px; /* 창이 좁아져도 칸 너비 유지 */
+            min-width: 320px; /* 아이폰 미니 등 작은 폰에서도 안 깨지게 조정 */
             background: white; 
             overflow-y: auto;
         }
 
         .now-indicator { position: absolute; left: 0; right: 0; height: 2px; background: var(--now-line); z-index: 20; display: none; pointer-events: none; }
 
-        /* [설정 유지] 글씨가 칸 안에서 줄바꿈되게 처리 */
         .ev { 
             position: absolute; left: 4px; right: 4px; padding: 4px 6px; border-radius: 6px; 
             font-size: 11px; line-height: 1.2; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
@@ -48,22 +48,23 @@
             word-break: keep-all; 
             overflow: hidden;
         }
-        .ev b { font-size: 11px; margin-bottom: 2px; display: block; color: inherit; }
-        .ev span { font-size: 10px; font-weight: bold; opacity: 0.8; }
+        .ev b { font-size: 10px; margin-bottom: 2px; display: block; color: inherit; }
+        .ev span { font-size: 9px; font-weight: bold; opacity: 0.8; }
 
         .ev.half-left { right: 51% !important; }
         .ev.half-right { left: 51% !important; }
 
-        .calendar-wrapper { width: 100%; overflow-x: auto; border-radius: 8px; }
+        /* 달력 부분도 한 화면에 잘 들어오도록 수정 */
+        .calendar-wrapper { width: 100%; overflow-x: auto; border-radius: 8px; -webkit-overflow-scrolling: touch; }
         .grid-container { 
             display: grid; 
-            grid-template-columns: repeat(7, minmax(110px, 1fr)); 
+            grid-template-columns: repeat(7, 1fr); 
             background: #eee; 
-            min-width: 800px; 
+            min-width: 600px; /* 너무 좁아지지 않게 유지하되 두 손가락 확대를 위해 설정 */
         }
-        .day-header { background: #f8f9fa; padding: 10px; text-align: center; font-weight: bold; font-size: 12px; }
-        .day-cell { background: white; height: 450px; position: relative; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
-        .day-num { padding: 5px; font-weight: bold; font-size: 11px; }
+        .day-header { background: #f8f9fa; padding: 10px; text-align: center; font-weight: bold; font-size: 11px; }
+        .day-cell { background: white; height: 350px; position: relative; border-right: 1px solid #eee; border-bottom: 1px solid #eee; }
+        .day-num { padding: 5px; font-weight: bold; font-size: 10px; }
 
         .math-br { background: var(--math-br); color: #0d47a1; }
         .math-ryu { background: var(--math-ryu); color: #00695c; }
@@ -76,7 +77,7 @@
         .hldy { background: var(--holiday); color: #854d0e; text-align: center; font-weight: bold; font-size: 10px; }
 
         .nav-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .menu-btn { background: white; border: 1px solid #ddd; padding: 20px; border-radius: 12px; font-weight: bold; cursor: pointer; }
+        .menu-btn { background: white; border: 1px solid #ddd; padding: 20px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 14px; }
         .back-btn { background: #444; color: white; border: none; padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; cursor: pointer; }
     </style>
 </head>
@@ -86,7 +87,7 @@
 
 <section id="home-section" class="section active">
     <div class="dashboard">
-        <h2 id="todayDate">오늘의 시간표</h2>
+        <h2 id="todayDate" style="font-size:1.1rem; margin-top:0;">오늘의 시간표</h2>
         <div class="timeline-scroll-area">
             <div class="timeline-container" id="todayTimeline">
                 <div id="nowLineHome" class="now-indicator"></div>
@@ -94,8 +95,8 @@
         </div>
     </div>
     <div class="nav-grid">
-        <button class="menu-btn" onclick="openSchedule()">🗓️ 전체 달력 보기</button>
-        <button class="menu-btn" onclick="openTodo()">✅ 할 일 목록</button>
+        <button class="menu-btn" onclick="openSchedule()">🗓️ 전체 달력</button>
+        <button class="menu-btn" onclick="openTodo()">✅ 할 일</button>
     </div>
 </section>
 
@@ -104,7 +105,7 @@
     <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
         <button onclick="renderCalendar(1)" style="padding:8px 15px;">1월</button>
         <button onclick="renderCalendar(2)" style="padding:8px 15px;">2월</button>
-        <strong id="monthTitle" style="font-size: 1.2rem; margin-left: 10px;"></strong>
+        <strong id="monthTitle" style="font-size: 1.1rem; margin-left: 10px;"></strong>
     </div>
     <div class="calendar-wrapper">
         <div class="grid-container" id="calendarGrid"></div>
@@ -124,6 +125,7 @@
 </section>
 
 <script>
+    // [기존 로직 동일]
     const baseSchedule = {
         1: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol', p:'half-left'}, {n:'물리(브밸)장재필', s:'19:20', e:'22:10', h:19.33, dur:2.8, c:'phys-br', p:'half-right'}],
         2: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'한컴 알고리즘', s:'13:00', e:'14:50', h:13, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}],
@@ -143,27 +145,19 @@
     function getDaySchedule(m, d) {
         const dateObj = new Date(2026, m - 1, d);
         const day = dateObj.getDay();
-
         if (m === 2) {
-            // 2/12(목): 장세욱 빠지고 학교등교 일정도 추가
             if (d === 12) {
                 let s = baseSchedule[4].filter(ev => !ev.n.includes('장세욱'));
                 s.push({n:'학교 등교', s:'08:00', e:'15:30', h:8, dur:4.5, c:'hldy'});
                 return s;
             }
-            // 2/16(월), 2/18(수): 연휴 중 이정욱 수업만 진행
             if (d === 16 || d === 18) return baseSchedule[day].filter(ev => ev.n.includes('이정욱'));
-            // 2/17(화): 설날 당일 전면 휴강
             if (d === 17) return [];
-            // 2/21(토): 류우성 수업 없음
             if (d === 21) return baseSchedule[6].filter(ev => !ev.n.includes('류우성'));
-            // 2/23(월): 장재필 수업 없음
             if (d === 23) return baseSchedule[1].filter(ev => !ev.n.includes('장재필'));
-            // 2/28(토): 류우성 & 양기선 수업 없음
             if (d === 28) return baseSchedule[6].filter(ev => !ev.n.includes('류우성') && !ev.n.includes('양기선'));
         }
-
-        if (m === 3 && d <= 3) return []; // 3월 초 시업식 기간 비움
+        if (m === 3 && d <= 3) return [];
         return baseSchedule[day] || [];
     }
 
@@ -180,7 +174,7 @@
             const div = document.createElement('div');
             div.className = `ev ${ev.c} ${ev.p || ''}`;
             div.style = `top:${top}px; height:${ev.dur * 38}px;`;
-            div.innerHTML = `<b>${ev.n}</b><span>${formatTime12(ev.s)} - ${formatTime12(ev.e)}</span>`;
+            div.innerHTML = `<b>${ev.n}</b><span>${formatTime12(ev.s)}</span>`;
             container.appendChild(div);
         });
         updateNowLine();
@@ -205,9 +199,9 @@
             let html = `<div class="day-num">${d}</div>`;
             const dailyData = getDaySchedule(m, d);
             dailyData.forEach(ev => {
-                const top = (ev.h - 6) * 26 + 25;
-                html += `<div class="ev ${ev.c} ${ev.p || ''}" style="top:${top}px; height:${ev.dur*26}px;">
-                            <b>${ev.n}</b><span>${ev.s}</span>
+                const top = (ev.h - 6) * 20 + 20;
+                html += `<div class="ev ${ev.c} ${ev.p || ''}" style="top:${top}px; height:${ev.dur*20}px; font-size:9px; padding:2px;">
+                            <b style="font-size:8px;">${ev.n}</b>
                          </div>`;
             });
             grid.innerHTML += `<div class="day-cell">${html}</div>`;
