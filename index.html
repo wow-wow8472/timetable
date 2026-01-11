@@ -184,7 +184,6 @@
         return baseSchedule[day] || [];
     }
 
-    // --- 네비게이션 로직 수정 ---
     function navigateTo(sectionId) {
         history.pushState({section: sectionId}, '', `#${sectionId}`);
         showSection(sectionId);
@@ -210,7 +209,6 @@
         updateHomeDashboard(); 
         loadTodos(); 
         setInterval(updateClockAndLine, 1000);
-        // 첫 진입 시 상태 기록
         history.replaceState({section: 'home-section'}, '', '');
     };
 
@@ -230,7 +228,9 @@
     function updateClockAndLine() {
         const now = new Date();
         const dateStr = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
-        const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        
+        // 1. 시계 표시 형식 수정 (오전/오후 HH:mm:ss)
+        const timeStr = now.toLocaleTimeString('ko-KR', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const dateEl = document.getElementById('todayDate');
         if(dateEl) dateEl.innerText = `${dateStr} ${timeStr} 일정`;
 
