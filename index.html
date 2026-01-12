@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=0.5, user-scalable=yes">
-    <title>2026 Winter Master (Side-by-Side View)</title>
+    <title>2026 Winter Master (Game with HighScore)</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
@@ -85,6 +85,8 @@
         .urgent-item { background: white; padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 8px solid #ff4d4d; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .urgent-item h3 { margin: 0 0 5px 0; font-size: 1.2rem; color: #222; }
         .urgent-item p { margin: 0; color: #666; font-size: 1rem; }
+        
+        #game-canvas { background: #70c5ce; display: block; margin: 0 auto; border: 4px solid #333; border-radius: 10px; max-width: 100%; touch-action: none; }
     </style>
 </head>
 <body>
@@ -113,7 +115,18 @@
             <button class="menu-btn-large" onclick="navigateTo('schedule-section')">🗓️ 전체 달력 보기</button>
             <a href="https://www.band.us/?referrer=https%3A%2F%2Fwww.band.us%2F" target="_blank" class="menu-btn-large" style="background: #03cf5d;">💚 네이버밴드 바로가기</a>
             <a href="https://www.youtube.com/playlist?list=PL0yYc0K1-YryjgZ6AONKyBP9VjiYwTDWv" target="_blank" class="menu-btn-large">🎵 배경 음악 재생 (YouTube)</a>
+            <button class="menu-btn-large" style="background: #f39c12;" onclick="navigateTo('game-section')">🎮 미니 게임 (최고기록 저장)</button>
         </div>
+    </div>
+</section>
+
+<section id="game-section" class="section">
+    <button class="back-btn-huge" onclick="stopGame(); handleBackBtn();">🏠 홈으로 돌아가기</button>
+    <div class="dashboard" style="text-align:center;">
+        <h2 style="margin-bottom:5px;">Flappy Master</h2>
+        <div id="highScoreDisplay" style="font-size: 1.1rem; font-weight: bold; color: #444; margin-bottom: 10px;">최고 기록: 로딩 중...</div>
+        <canvas id="game-canvas" width="320" height="480"></canvas>
+        <div id="game-msg" style="margin-top:15px; font-weight:bold; font-size:1.2rem; color:#d32f2f; min-height: 1.5em;"></div>
     </div>
 </section>
 
@@ -154,6 +167,7 @@
 </section>
 
 <script>
+    // Firebase 초기화 (제공하신 설정 그대로 유지)
     const firebaseConfig = {
         apiKey: "AIzaSyA5TchtCroGefUyHb7ELwim-p9FQ-wETNk",
         authDomain: "vac-828ed.firebaseapp.com",
@@ -171,6 +185,7 @@
     let todoList = [];
     let currentMonth = new Date().getMonth() + 1;
     let autoAddLog = {};
+    let bestScore = 0; // 최고 기록 변수
 
     function navigateTo(id, saveHistory = true) {
         const target = document.getElementById(id);
@@ -184,6 +199,7 @@
         if(id === 'schedule-section') { isEditMode = false; currentMonth = new Date().getMonth() + 1; renderCalendar(currentMonth); }
         if(id === 'todo-section') loadTodos();
         if(id === 'urgent-section') updateUrgentList();
+        if(id === 'game-section') initGame();
         window.scrollTo(0,0);
     }
 
@@ -196,6 +212,13 @@
         if (history.state && history.state.sectionId !== 'home-section') history.back();
         else navigateTo('home-section');
     }
+
+    // 최고 기록 실시간 리스너 추가
+    db.ref('gameBestScore').on('value', (snap) => {
+        bestScore = snap.val() || 0;
+        const display = document.getElementById('highScoreDisplay');
+        if(display) display.innerText = `최고 기록: ${bestScore}점`;
+    });
 
     db.ref('autoAddedHistory').once('value', (snap) => {
         autoAddLog = snap.val() || {};
@@ -509,6 +532,90 @@
     }
 
     function deleteTodoImmediate(i) { todoList.splice(i, 1); db.ref('todos').set(todoList); }
+
+    /* GAME LOGIC (Flappy Bird) - Firebase BestScore 연동 */
+    let canvas, ctx, animationId;
+    let bird, pipes, score, gameOver;
+
+    function initGame() {
+        canvas = document.getElementById('game-canvas');
+        ctx = canvas.getContext('2d');
+        bird = { x: 50, y: 150, w: 20, h: 20, v: 0, g: 0.4, jump: -6 };
+        pipes = []; score = 0; gameOver = false;
+        document.getElementById('game-msg').innerText = "";
+        
+        canvas.onclick = () => { if(gameOver) initGame(); else bird.v = bird.jump; };
+        window.onkeydown = (e) => { if(e.code === "Space") { e.preventDefault(); if(gameOver) initGame(); else bird.v = bird.jump; } };
+        
+        if(animationId) cancelAnimationFrame(animationId);
+        gameLoop();
+    }
+
+    function stopGame() { if(animationId) cancelAnimationFrame(animationId); }
+
+    function updateBestScore(finalScore) {
+        if (finalScore > bestScore) {
+            db.ref('gameBestScore').set(finalScore);
+            document.getElementById('game-msg').innerText = `✨ 신기록 달성! (${finalScore}점)`;
+        }
+    }
+
+    function gameLoop() {
+        if(gameOver) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Bird
+        bird.v += bird.g; bird.y += bird.v;
+        ctx.fillStyle = "#f1c40f"; ctx.fillRect(bird.x, bird.y, bird.w, bird.h);
+
+        // Pipes
+        if(pipes.length === 0 || pipes[pipes.length-1].x < canvas.width - 150) {
+            let gap = 120;
+            let topH = Math.random() * (canvas.height - gap - 100) + 50;
+            pipes.push({ x: canvas.width, top: topH, bottom: canvas.height - topH - gap, passed: false });
+        }
+
+        pipes.forEach((p) => {
+            p.x -= 2;
+            ctx.fillStyle = "#2ecc71";
+            ctx.fillRect(p.x, 0, 40, p.top);
+            ctx.fillRect(p.x, canvas.height - p.bottom, 40, p.bottom);
+
+            // Collision
+            if(bird.x < p.x + 40 && bird.x + bird.w > p.x && (bird.y < p.top || bird.y + bird.h > canvas.height - p.bottom)) {
+                gameOver = true;
+                updateBestScore(score);
+            }
+            // Passing pipe
+            if(p.x + 40 < bird.x && !p.passed) { score++; p.passed = true; }
+        });
+
+        pipes = pipes.filter(p => p.x > -40);
+        if(bird.y < 0 || bird.y + bird.h > canvas.height) {
+            gameOver = true;
+            updateBestScore(score);
+        }
+
+        // Score UI
+        ctx.fillStyle = "white"; ctx.font = "20px Bold Pretendard"; ctx.fillText("Score: " + score, 10, 30);
+        
+        // 99점 달성 처리
+        if(score >= 99) {
+            gameOver = true;
+            updateBestScore(score);
+            document.getElementById('game-msg').innerText = "🏆 축하합니다! 99점 달성! 공부하러 가세요!";
+        }
+
+        if(gameOver) {
+            ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0,0,canvas.width, canvas.height);
+            ctx.fillStyle = "white"; ctx.textAlign = "center";
+            ctx.fillText("Game Over", canvas.width/2, canvas.height/2);
+            ctx.fillText("Click to Retry", canvas.width/2, canvas.height/2 + 30);
+            ctx.textAlign = "start";
+        }
+
+        animationId = requestAnimationFrame(gameLoop);
+    }
 
     window.onload = () => {
         const col = document.getElementById('timeLabels');
