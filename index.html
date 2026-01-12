@@ -121,7 +121,7 @@
     <button class="back-btn-huge" onclick="handleBackBtn()">🏠 홈으로 돌아가기</button>
     <div class="dashboard">
         <h2 style="font-size:1.3rem; color:#d32f2f;">🚨 완료되지 않은 직전 숙제</h2>
-        <p style="font-size:0.9rem; color:#666; margin-bottom:20px;">예정된 수업의 직전 수업 숙제가 미완료된 항목입니다.</p>
+        <p style="font-size:0.9rem; color:#666; margin-bottom:20px;">수업이 완전히 종료된 후에 목록에서 다음 주 일정으로 갱신됩니다.</p>
         <div id="urgentList"></div>
     </div>
 </section>
@@ -321,32 +321,35 @@
         const listEl = document.getElementById('urgentList');
         listEl.innerHTML = '';
         const now = new Date();
-        now.setHours(0,0,0,0);
-        const nowTime = new Date().getTime();
+        const nowTime = now.getTime();
         let urgentFound = false;
         let processedClasses = new Set(); 
+
         for (let i = 0; i < 7; i++) {
             let futureDate = new Date(now);
+            futureDate.setHours(0,0,0,0);
             futureDate.setDate(now.getDate() + i);
             let m = futureDate.getMonth() + 1;
             let d = futureDate.getDate();
             let sched = getDaySchedule(m, d);
+
             sched.forEach(ev => {
                 if (ev.c === 'hldy' || processedClasses.has(ev.n)) return;
-                let prevInfo = findPreviousClass(ev.n, futureDate);
-                if (prevInfo) {
-                    const [endH, endM] = prevInfo.event.e.split(':').map(Number);
-                    const prevEndDate = new Date(2026, prevInfo.m - 1, prevInfo.d, endH, endM).getTime();
-                    if (prevEndDate < nowTime) {
+                
+                const endHour = Math.floor(ev.h + ev.dur);
+                const endMin = Math.round(((ev.h + ev.dur) % 1) * 60);
+                const classEndTime = new Date(2026, m-1, d, endHour, endMin).getTime();
+
+                if (classEndTime > nowTime) {
+                    let prevInfo = findPreviousClass(ev.n, futureDate);
+                    if (prevInfo) {
                         const saved = (checkData[prevInfo.dateKey] && checkData[prevInfo.dateKey][prevInfo.idx]) || { hw: false };
                         const auto = getAutoStatus(prevInfo.event, prevInfo.dateKey);
                         const isDone = auto.autoHw || saved.hw;
+
                         if (!isDone) {
                             urgentFound = true; processedClasses.add(ev.n);
-                            let dayDiffStr = "";
-                            const diffDays = Math.floor((futureDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                            if(diffDays === 0) dayDiffStr = "오늘";
-                            else dayDiffStr = `${diffDays}일 뒤`;
+                            let dayDiffStr = i === 0 ? "오늘" : `${i}일 뒤`;
                             const item = document.createElement('div');
                             item.className = 'urgent-item';
                             item.innerHTML = `<h3>${ev.n}</h3><p>수업 예정: ${dayDiffStr} (${m}/${d})</p><p style="margin-top:5px; color:#d32f2f; font-weight:bold;">📍 미완료: ${prevInfo.m}월 ${prevInfo.d}일 수업 숙제</p>`;
@@ -458,7 +461,7 @@
             if (nowH >= 0 && nowH < 5.5) msgEl.innerText = `일어나기까지 ${getDiffStr(5.5)} 남았습니다.`;
             else {
                 let currentClass = null; let nextClass = null;
-                if (day === 1) { // 월요일인 경우 장재필 우선
+                if (day === 1) { 
                     const jjp = sched.find(ev => ev.n.includes('장재필'));
                     if (jjp) {
                         if (nowH >= jjp.h && nowH < (jjp.h + jjp.dur)) currentClass = jjp;
