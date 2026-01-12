@@ -233,13 +233,7 @@
             const dateKey = `${current.getFullYear()}-${m}-${d}`;
             const hhmmNow = now.getHours() * 100 + now.getMinutes();
             const isToday = (current.toDateString() === now.toDateString());
-
-            // 2월 17일 자동 할 일 생성 방지
-            if (m === 2 && d === 17) {
-                current.setDate(current.getDate() + 1);
-                continue;
-            }
-
+            if (m === 2 && d === 17) { current.setDate(current.getDate() + 1); continue; }
             if ((day === 1 || day === 3) && !autoAddLog[dateKey + "-lee"]) {
                 if (!isToday || hhmmNow >= 1830) {
                     todoList.push({ text: `[${m}/${d}] 이정욱 물리 수업듣기`, done: false });
@@ -247,7 +241,6 @@
                     autoAddLog[dateKey + "-lee"] = true; updated = true;
                 }
             }
-            // 2월 23일 장재필 할 일 추가 고려
             if (m === 2 && d === 23 && !autoAddLog[dateKey + "-jangjp"]) {
                 if (!isToday || hhmmNow >= 1920) {
                     todoList.push({ text: `[2/23] 장재필 물리 수업듣기`, done: false });
@@ -308,12 +301,11 @@
         if (m === 1 && d === 3) s = baseSchedule[6].filter(ev => !ev.n.includes('양기선'));
         else if (m === 1 && d === 1) s = [{n:'확통(다원)김찬용', s:'10:00', e:'13:00', h:10, dur:3, c:'math-dw'}, {n:'확통(다원)김찬용', s:'19:00', e:'22:00', h:19, dur:3, c:'math-dw'}];
         else if (m === 2) {
-            if (d === 17) s = []; // 2월 17일 수업 전부 삭제
+            if (d === 17) s = [];
             else if (d === 12) { s = baseSchedule[4].filter(ev => !ev.n.includes('장세욱')); s.push({n:'학교 등교', s:'08:00', e:'15:30', h:8, dur:4.5, c:'hldy'}); }
             else if (d === 16 || d === 18) s = baseSchedule[day].filter(ev => ev.n.includes('이정욱'));
             else if (d === 21) s = baseSchedule[6].filter(ev => !ev.n.includes('류우성'));
             else if (d === 23) {
-                // 2월 23일 기본 수업 + 장재필 추가
                 s = baseSchedule[day] || [];
                 if (!s.some(ev => ev.n.includes('장재필'))) {
                     s.push({n:'물리(브밸)장재필', s:'19:20', e:'22:10', h:19.33, dur:2.8, c:'phys-br'});
@@ -333,14 +325,12 @@
         const nowTime = new Date().getTime();
         let urgentFound = false;
         let processedClasses = new Set(); 
-
         for (let i = 0; i < 7; i++) {
             let futureDate = new Date(now);
             futureDate.setDate(now.getDate() + i);
             let m = futureDate.getMonth() + 1;
             let d = futureDate.getDate();
             let sched = getDaySchedule(m, d);
-
             sched.forEach(ev => {
                 if (ev.c === 'hldy' || processedClasses.has(ev.n)) return;
                 let prevInfo = findPreviousClass(ev.n, futureDate);
@@ -357,14 +347,9 @@
                             const diffDays = Math.floor((futureDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                             if(diffDays === 0) dayDiffStr = "오늘";
                             else dayDiffStr = `${diffDays}일 뒤`;
-
                             const item = document.createElement('div');
                             item.className = 'urgent-item';
-                            item.innerHTML = `
-                                <h3>${ev.n}</h3>
-                                <p>수업 예정: ${dayDiffStr} (${m}/${d})</p>
-                                <p style="margin-top:5px; color:#d32f2f; font-weight:bold;">📍 미완료: ${prevInfo.m}월 ${prevInfo.d}일 수업 숙제</p>
-                            `;
+                            item.innerHTML = `<h3>${ev.n}</h3><p>수업 예정: ${dayDiffStr} (${m}/${d})</p><p style="margin-top:5px; color:#d32f2f; font-weight:bold;">📍 미완료: ${prevInfo.m}월 ${prevInfo.d}일 수업 숙제</p>`;
                             listEl.appendChild(item);
                         }
                     }
@@ -424,10 +409,7 @@
         const finalHw = auto.autoHw || saved.hw; const finalRev = auto.autoRev || saved.rev;
         if (isCalendar) div.onclick = (e) => handleTaskClick(e, dateKey, idx, ev);
         const locked = auto.hwLocked && auto.revLocked;
-        div.innerHTML = `
-            <div class="split-check-layer"><div class="hw-part ${finalHw ? 'active' : ''}"></div><div class="rev-part ${finalRev ? 'active' : ''}"></div></div>
-            <div class="ev-content"><b>${ev.n}${locked ? ' 🔒' : ''}</b><span>${isCalendar ? formatTimeShort(ev.s)+'-'+formatTimeShort(ev.e) : formatTime12(ev.s)+' - '+formatTime12(ev.e)}</span></div>
-        `;
+        div.innerHTML = `<div class="split-check-layer"><div class="hw-part ${finalHw ? 'active' : ''}"></div><div class="rev-part ${finalRev ? 'active' : ''}"></div></div><div class="ev-content"><b>${ev.n}${locked ? ' 🔒' : ''}</b><span>${isCalendar ? formatTimeShort(ev.s)+'-'+formatTimeShort(ev.e) : formatTime12(ev.s)+' - '+formatTime12(ev.e)}</span></div>`;
         return div;
     }
 
@@ -458,6 +440,7 @@
     function updateClockAndLine() {
         const now = new Date();
         const m = now.getMonth() + 1; const d = now.getDate();
+        const day = now.getDay();
         const dateStr = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
         const timeStr = now.toLocaleTimeString('ko-KR', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
         if(document.getElementById('todayDate')) document.getElementById('todayDate').innerText = `${dateStr} ${timeStr} 일정`;
@@ -475,12 +458,21 @@
             if (nowH >= 0 && nowH < 5.5) msgEl.innerText = `일어나기까지 ${getDiffStr(5.5)} 남았습니다.`;
             else {
                 let currentClass = null; let nextClass = null;
-                sched.forEach(ev => {
-                    if (nowH >= ev.h && nowH < (ev.h + ev.dur)) currentClass = ev;
-                    else if (nowH < ev.h && (!nextClass || ev.h < nextClass.h)) nextClass = ev;
-                });
-                if (currentClass) msgEl.innerText = `수업시간 ${getDiffStr(currentClass.h + currentClass.dur)} 남았습니다.`;
-                else if (nextClass) msgEl.innerText = `다음 수업 ${getDiffStr(nextClass.h)} 남았습니다.`;
+                if (day === 1) { // 월요일인 경우 장재필 우선
+                    const jjp = sched.find(ev => ev.n.includes('장재필'));
+                    if (jjp) {
+                        if (nowH >= jjp.h && nowH < (jjp.h + jjp.dur)) currentClass = jjp;
+                        else if (nowH < jjp.h) nextClass = jjp;
+                    }
+                }
+                if (!currentClass && !nextClass) {
+                    sched.forEach(ev => {
+                        if (nowH >= ev.h && nowH < (ev.h + ev.dur)) currentClass = ev;
+                        else if (nowH < ev.h && (!nextClass || ev.h < nextClass.h)) nextClass = ev;
+                    });
+                }
+                if (currentClass) msgEl.innerText = `${currentClass.n} 수업종료까지 ${getDiffStr(currentClass.h + currentClass.dur)} 남았습니다.`;
+                else if (nextClass) msgEl.innerText = `${nextClass.n} 수업까지 ${getDiffStr(nextClass.h)} 남았습니다.`;
                 else msgEl.innerText = `잠들기까지 ${getDiffStr(24)} 남았습니다.`;
             }
         }
