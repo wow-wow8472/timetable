@@ -210,7 +210,6 @@
         updateHomeDashboard();
     });
 
-    // 베이스 스케줄에서 화요일 한컴 알고리즘 제거 (필요 시 getDaySchedule에서 날짜별로 다시 제어함)
     const baseSchedule = {
         1: [{n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol', p:'half-left'}, {n:'물리(브밸)장재필', s:'19:20', e:'22:10', h:19.33, dur:2.8, c:'phys-br', p:'half-right'}],
         2: [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}],
@@ -235,7 +234,6 @@
             const isToday = (current.toDateString() === now.toDateString());
             if (m === 2 && d === 17) { current.setDate(current.getDate() + 1); continue; }
             
-            // 기존 루틴들
             if ((day === 1 || day === 3) && !autoAddLog[dateKey + "-lee"]) {
                 if (!isToday || hhmmNow >= 1830) {
                     todoList.push({ text: `[${m}/${d}] 이정욱 물리 수업듣기`, done: false });
@@ -270,22 +268,8 @@
                 }
             }
 
-            // 한컴 알고리즘 변경 반영
-            if (dateVal < 20260113) {
-                if (day === 2 && !autoAddLog[dateKey + "-hc-old"]) {
-                    if (!isToday || hhmmNow >= 1650) {
-                        todoList.push({ text: `[${m}/${d}] 한컴 알고리즘 수업듣기`, done: false });
-                        autoAddLog[dateKey + "-hc-old"] = true; updated = true;
-                    }
-                }
-            } else {
-                if (day === 3 && !autoAddLog[dateKey + "-hc-new"]) {
-                    if (!isToday || hhmmNow >= 1700) {
-                        todoList.push({ text: `[${m}/${d}] 한컴 알고리즘 수업듣기`, done: false });
-                        autoAddLog[dateKey + "-hc-new"] = true; updated = true;
-                    }
-                }
-            }
+            // 한컴 알고리즘 수업듣기 자동 추가 로직 제거됨
+
             current.setDate(current.getDate() + 1);
         }
         if (updated) { db.ref('todos').set(todoList); db.ref('autoAddedHistory').set(autoAddLog); }
@@ -320,7 +304,6 @@
         const dateVal = 20260000 + m * 100 + d;
         let s = [];
         
-        // 예외 날짜 처리
         if (m === 1 && d === 3) s = baseSchedule[6].filter(ev => !ev.n.includes('양기선'));
         else if (m === 1 && d === 1) s = [{n:'확통(다원)김찬용', s:'10:00', e:'13:00', h:10, dur:3, c:'math-dw'}, {n:'확통(다원)김찬용', s:'19:00', e:'22:00', h:19, dur:3, c:'math-dw'}];
         else if (m === 2) {
@@ -338,7 +321,6 @@
             s = [...(baseSchedule[day] || [])];
         }
 
-        // 1월 13일 기준 한컴 알고리즘 스케줄 강제 조정 (화요일 제거, 수요일 추가)
         if (dateVal < 20260113) {
             if (day === 2) {
                 s.push({n:'한컴 알고리즘', s:'13:00', e:'14:50', h:13, dur:1.8, c:'algo-hc'});
@@ -346,11 +328,9 @@
             }
         } else {
             if (day === 2) {
-                // 1/13 이후 화요일에는 한컴 알고리즘을 s에서 완전히 제거 (기존 baseSchedule에 있을 경우 대비)
                 s = s.filter(ev => !ev.n.includes('한컴 알고리즘'));
             }
             if (day === 3) {
-                // 1/13 이후 수요일 오후 1시~5시 추가
                 s.push({n:'한컴 알고리즘', s:'13:00', e:'17:00', h:13, dur:4, c:'algo-hc'});
             }
         }
