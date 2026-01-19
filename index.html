@@ -230,7 +230,13 @@
     window.addEventListener('popstate', (e) => navigateTo(e.state?.sectionId || 'home-section', false));
     function handleBackBtn() { history.state?.sectionId !== 'home-section' ? history.back() : navigateTo('home-section'); }
 
-    db.ref('checks').on('value', (s) => { checkData = s.val() || {}; updateHomeDashboard(); if(document.getElementById('urgent-section').classList.contains('active')) updateUrgentList(); });
+    // 데이터 변경 감지 시 즉시 화면 갱신
+    db.ref('checks').on('value', (s) => { 
+        checkData = s.val() || {}; 
+        if(document.getElementById('home-section').classList.contains('active')) updateHomeDashboard();
+        if(document.getElementById('schedule-section').classList.contains('active')) renderCalendar(currentMonth);
+        if(document.getElementById('urgent-section').classList.contains('active')) updateUrgentList(); 
+    });
     db.ref('todos').on('value', (s) => { todoList = s.val() || []; loadTodos(); });
 
     function toggleCheck(date, idx, type) {
@@ -247,30 +253,37 @@
         const dayEvs = fixedFullSchedule[dateStr] || [];
         const statusEl = document.getElementById('statusMessage');
         const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
         let currentCls = dayEvs.find(ev => {
             const [sh, sm] = ev.s.split(':').map(Number);
             const [eh, em] = ev.e.split(':').map(Number);
             return nowSec >= (sh*3600+sm*60) && nowSec < (eh*3600+em*60);
         });
+
         if (currentCls) {
             const [eh, em] = currentCls.e.split(':').map(Number);
             const diff = (eh * 3600 + em * 60) - nowSec;
-            statusEl.innerText = `${currentCls.n} 종료까지 ${Math.floor(diff/60)}분 ${diff%60}초 남았습니다.`;
+            const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
+            statusEl.innerText = `${currentCls.n} 종료까지 ${h>=1?h+'시간 ':''}${m}분 ${s}초 남았습니다.`;
         } else {
             let nextEv = dayEvs.filter(ev => {
                 const [sh, sm] = ev.s.split(':').map(Number);
                 return (sh * 3600 + sm * 60) > nowSec;
             }).sort((a,b) => (a.h*3600)-(b.h*3600))[0];
+
             if (nextEv) {
                 const [sh, sm] = nextEv.s.split(':').map(Number);
                 const diff = (sh * 3600 + sm * 60) - nowSec;
                 const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
-                statusEl.innerText = `다음 수업 시작까지 ${h>0?h+'시간 ':''}${m}분 ${s}초 남았습니다.`;
+                statusEl.innerText = `${nextEv.n} 시작까지 ${h>=1?h+'시간 ':''}${m}분 ${s}초 남았습니다.`;
             } else {
-                const diff = (24 * 3600) - nowSec;
-                statusEl.innerText = `잠들기까지 ${Math.floor(diff/3600)}시간 ${Math.floor((diff%3600)/60)}분 ${diff%60}초 남았습니다.`;
+                const sleepTime = 24 * 3600;
+                const diff = sleepTime - nowSec;
+                const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
+                statusEl.innerText = `잠들기까지 ${h>=1?h+'시간 ':''}${m}분 ${s}초 남았습니다.`;
             }
         }
+
         dayEvs.forEach((ev, i) => {
             const div = document.createElement('div');
             div.className = `ev ${ev.c} ${ev.p||''}`;
@@ -285,9 +298,15 @@
             div.innerHTML = `<div class="split-check-layer"><div class="hw-part ${checkData[hwKey]?'active':''}"></div><div class="rev-part ${checkData[revKey]?'active':''}"></div></div><div class="ev-content"><b>${ev.n}</b><span>${ev.s}~${ev.e}</span></div>`;
             container.appendChild(div);
         });
+
         const line = document.getElementById('nowLineHome');
         const h = now.getHours(), m = now.getMinutes();
-        if(h >= 6 && h < 24) { line.style.display = 'block'; line.style.top = ((h - 6) * 38 + (m / 60) * 38) + 'px'; } else { line.style.display = 'none'; }
+        if(h >= 6 && h < 24) { 
+            line.style.display = 'block';
+            line.style.top = ((h - 6) * 38 + (m / 60) * 38) + 'px';
+        } else { 
+            line.style.display = 'none'; 
+        }
     }
 
     function renderCalendar(month) {
@@ -307,15 +326,36 @@
             const now = new Date(); if(now.getFullYear()===2026 && now.getMonth()+1===month && now.getDate()===d) cell.classList.add('is-today');
             let html = `<div class="day-num ${new Date(2026,month-1,d).getDay()===0?'is-red':''}">${d}</div>`;
             const evs = fixedFullSchedule[dateStr] || [];
-            
-            // 달력 칸 시간표 위치 계산: 06시~24시 (총 18시간)를 350px 높이에 분배
-            const cellHeight = 350; const baseHour = 6; const totalHours = 18;
+            const cellHeight = 350;
+            const baseHour = 6; const totalHours = 18;
             evs.forEach((ev, i) => {
                 const hwKey = `${dateStr}_${i}_hw`, revKey = `${dateStr}_${i}_rev`;
                 const topPos = ((ev.h - baseHour) / totalHours) * (cellHeight - 30) + 30;
                 const heightVal = (ev.dur / totalHours) * (cellHeight - 30);
+                
+                // 이벤트 컨테이너 생성
+                const evDiv = document.createElement('div');
+                evDiv.className = `cal-ev ${ev.c} ${ev.p||''}`;
+                evDiv.style.top = topPos + 'px';
+                evDiv.style.height = heightVal + 'px';
+                evDiv.innerHTML = `
+                    <div class="split-check-layer"><div class="hw-part ${checkData[hwKey]?'active':''}"></div><div class="rev-part ${checkData[revKey]?'active':''}"></div></div>
+                    <div class="ev-content"><b>${ev.n}</b><span>${ev.s}~${ev.e}</span></div>`;
+                
+                // 클릭 시 즉각 반응하도록 핸들러 등록
+                evDiv.onclick = (e) => {
+                    if(!isEditMode) return;
+                    const r = evDiv.getBoundingClientRect();
+                    const x = e.clientX - r.left;
+                    toggleCheck(dateStr, i, x < r.width/2 ? 'hw' : 'rev');
+                };
+                
+                // 문자열 대신 노드를 직접 추가할 수 없으므로 우선은 이 방식으로 둡니다. 
+                // renderCalendar의 성능을 위해 innerHTML을 사용하는 기존 방식을 유지하면서
+                // 각 요소에 onclick 속성을 인라인으로 심어 즉각 실행되게 합니다.
                 html += `
-                    <div class="cal-ev ${ev.c} ${ev.p||''}" style="top:${topPos}px; height:${heightVal}px;" onclick="if(isEditMode) { const r=this.getBoundingClientRect(); const x=window.event.clientX-r.left; toggleCheck('${dateStr}',${i}, x<r.width/2?'hw':'rev'); }">
+                    <div class="cal-ev ${ev.c} ${ev.p||''}" style="top:${topPos}px; height:${heightVal}px;" 
+                         onclick="if(isEditMode) { const r=this.getBoundingClientRect(); const x=event.clientX-r.left; toggleCheck('${dateStr}',${i}, x<r.width/2?'hw':'rev'); }">
                         <div class="split-check-layer"><div class="hw-part ${checkData[hwKey]?'active':''}"></div><div class="rev-part ${checkData[revKey]?'active':''}"></div></div>
                         <div class="ev-content"><b>${ev.n}</b><span>${ev.s}~${ev.e}</span></div>
                     </div>`;
@@ -325,14 +365,16 @@
     }
 
     function updateUrgentList() {
-        const listEl = document.getElementById('urgentList'); listEl.innerHTML = '';
+        const listEl = document.getElementById('urgentList');
+        listEl.innerHTML = '';
         const now = new Date(); const urgentItems = [];
         const allDates = Object.keys(fixedFullSchedule).sort((a,b) => {
             const [y1,m1,d1] = a.split('-').map(Number); const [y2,m2,d2] = b.split('-').map(Number);
             return new Date(y1, m1-1, d1) - new Date(y2, m2-1, d2);
         });
         for(let i=0; i<7; i++) {
-            const targetDate = new Date(); targetDate.setDate(now.getDate() + i);
+            const targetDate = new Date();
+            targetDate.setDate(now.getDate() + i);
             const dateStr = `${targetDate.getFullYear()}-${targetDate.getMonth()+1}-${targetDate.getDate()}`;
             const dayClasses = fixedFullSchedule[dateStr];
             if(dayClasses) {
@@ -359,16 +401,62 @@
 
     function toggleEditMode() { isEditMode = !isEditMode; const btn = document.getElementById('editToggleBtn'); btn.innerText = isEditMode ? '✅ 수정 완료' : '🛠️ 수정 모드 시작'; document.getElementById('schedule-section').classList.toggle('edit-active', isEditMode); }
     function addTodo() { const input = document.getElementById('todoInput'); if(!input.value) return; db.ref('todos').set([...todoList, { text: input.value, done: false }]); input.value = ''; }
-    function loadTodos() { const el = document.getElementById('todoList'); if(!el) return; el.innerHTML = todoList.length ? '' : '<p style="color:#999; text-align:center;">할 일이 없습니다.</p>'; todoList.forEach((t, i) => { const div = document.createElement('div'); div.style="display:flex; align-items:center; padding:18px 0; border-bottom:1px solid #f0f0f0;"; div.innerHTML=`<input type="checkbox" style="width:25px; height:25px;" onchange="deleteTodo(${i})"><span style="flex:1; margin:0 15px; font-size:1.2rem;">${t.text}</span>`; el.appendChild(div); }); }
+    function loadTodos() { const el = document.getElementById('todoList'); if(!el) return; el.innerHTML = todoList.length ? '' : '<p style=\"color:#999; text-align:center;\">할 일이 없습니다.</p>'; todoList.forEach((t, i) => { const div = document.createElement('div'); div.style="display:flex; align-items:center; padding:18px 0; border-bottom:1px solid #f0f0f0;"; div.innerHTML=`<input type=\"checkbox\" style=\"width:25px; height:25px;\" onchange=\"deleteTodo(${i})\"><span style=\"flex:1; margin:0 15px; font-size:1.2rem;\">${t.text}</span>`; el.appendChild(div); }); }
     function deleteTodo(i) { todoList.splice(i, 1); db.ref('todos').set(todoList); }
 
     window.onload = () => {
-        const col = document.getElementById('timeLabels'); for (let i = 6; i <= 24; i++) { const label = document.createElement('div'); label.className = 'time-label'; label.style.top = (i - 6) * 38 + 'px'; label.innerText = i; col.appendChild(label); }
+        const col = document.getElementById('timeLabels');
+        for (let i = 6; i <= 24; i++) { 
+            const label = document.createElement('div'); label.className = 'time-label';
+            label.style.top = (i - 6) * 38 + 'px'; label.innerText = i; col.appendChild(label);
+        }
+
         setInterval(() => {
-            const now = new Date(); const month = now.getMonth() + 1; const date = now.getDate();
+            const now = new Date();
+            const year = now.getFullYear(); const mon = now.getMonth() + 1; const date = now.getDate();
+            const day = now.getDay();
+            const currentTimeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            const dateKey = `${year}-${mon}-${date}`;
+
+            if (day === 1 && currentTimeStr === "21:30") {
+                const autoKey = `${dateKey}_이정욱_auto`;
+                db.ref('lastAutoAdded/' + autoKey).once('value', (snap) => {
+                    if (!snap.exists()) {
+                        db.ref('todos').once('value', (todoSnap) => {
+                            let list = todoSnap.val() || [];
+                            list.push({ text: "이정욱 수업듣기", done: false }, { text: "이정욱 시험보기", done: false });
+                            db.ref('todos').set(list); db.ref('lastAutoAdded/' + autoKey).set(true);
+                        });
+                    }
+                });
+            } else if (day === 2 && currentTimeStr === "12:30") {
+                const autoKey = `${dateKey}_장세욱_auto`;
+                db.ref('lastAutoAdded/' + autoKey).once('value', (snap) => {
+                    if (!snap.exists()) {
+                        db.ref('todos').once('value', (todoSnap) => {
+                            let list = todoSnap.val() || [];
+                            list.push({ text: "장세욱 시험보기", done: false }, { text: "장세욱 수업듣기", done: false });
+                            db.ref('todos').set(list); db.ref('lastAutoAdded/' + autoKey).set(true);
+                        });
+                    }
+                });
+            } else if (day === 6 && currentTimeStr === "12:30") {
+                const autoKey = `${dateKey}_김류_auto`;
+                db.ref('lastAutoAdded/' + autoKey).once('value', (snap) => {
+                    if (!snap.exists()) {
+                        db.ref('todos').once('value', (todoSnap) => {
+                            let list = todoSnap.val() || [];
+                            list.push({ text: "김찬용 수업듣기", done: false }, { text: "김찬용 시험보기", done: false }, { text: "류우성 수업듣기", done: false }, { text: "류우성 시험보기", done: false });
+                            db.ref('todos').set(list); db.ref('lastAutoAdded/' + autoKey).set(true);
+                        });
+                    }
+                });
+            }
+
+            const month = now.getMonth() + 1; const d = now.getDate();
             let h = now.getHours(); const m = String(now.getMinutes()).padStart(2, '0'); const s = String(now.getSeconds()).padStart(2, '0');
             const ampm = h >= 12 ? '오후' : '오전'; h = h % 12 || 12;
-            document.getElementById('todayDate').innerText = `${month}월 ${date}일 ${ampm} ${h}시 ${m}분 ${s}초 일정`;
+            document.getElementById('todayDate').innerText = `${month}월 ${d}일 ${ampm} ${h}시 ${m}분 ${s}초 일정`;
             updateHomeDashboard();
         }, 1000);
     };
