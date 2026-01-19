@@ -211,7 +211,7 @@
         "2026-2-24": [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'박강현 과외', s:'13:00', e:'16:00', h:13, dur:3, c:'tutor-pk'}],
         "2026-2-25": [{n:'한컴 알고리즘', s:'13:00', e:'14:50', h:13, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}, {n:'물리(솔루션)이정욱', s:'18:30', e:'21:30', h:18.5, dur:3, c:'phys-sol'}],
         "2026-2-26": [{n:'확통(브밸)장세욱T', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-br'}, {n:'미적(브밸)류우성', s:'13:00', e:'16:00', h:13, dur:3, c:'math-ryu'}, {n:'미적(원솔)김기현', s:'18:00', e:'22:00', h:18, dur:4, c:'math-ws'}],
-        "2026-2-27": [{n:'원솔 알고리즘', s:'09:30', e:'13:30', h:9.5, dur:4, c:'algo-os'}, {n:'한컴 알고리즘', s:'17:00', e:'18:50', h:17, dur:1.8, c:'algo-hc'}],
+        "2026-2-27": [{n:'원솔 알고리즘', s:'09:30', e:'13:30', h:9.5, dur:4, c:'algo-os'}, {n:'한컴 알고리즘', s:'15:00', e:'16:50', h:15, dur:1.8, c:'algo-hc'}, {n:'한컴 알고리즘', s:'17:00', e:'18:50', h:17, dur:1.8, c:'algo-hc'}],
         "2026-2-28": [{n:'확통(다원)김찬용', s:'09:30', e:'12:30', h:9.5, dur:3, c:'math-dw'}, {n:'물리(브밸)양기선', s:'16:00', e:'19:20', h:16, dur:3.33, c:'phys-yang'}]
     };
 
@@ -230,7 +230,6 @@
     window.addEventListener('popstate', (e) => navigateTo(e.state?.sectionId || 'home-section', false));
     function handleBackBtn() { history.state?.sectionId !== 'home-section' ? history.back() : navigateTo('home-section'); }
 
-    // 데이터 변경 감지 시 즉시 화면 갱신
     db.ref('checks').on('value', (s) => { 
         checkData = s.val() || {}; 
         if(document.getElementById('home-section').classList.contains('active')) updateHomeDashboard();
@@ -332,27 +331,6 @@
                 const hwKey = `${dateStr}_${i}_hw`, revKey = `${dateStr}_${i}_rev`;
                 const topPos = ((ev.h - baseHour) / totalHours) * (cellHeight - 30) + 30;
                 const heightVal = (ev.dur / totalHours) * (cellHeight - 30);
-                
-                // 이벤트 컨테이너 생성
-                const evDiv = document.createElement('div');
-                evDiv.className = `cal-ev ${ev.c} ${ev.p||''}`;
-                evDiv.style.top = topPos + 'px';
-                evDiv.style.height = heightVal + 'px';
-                evDiv.innerHTML = `
-                    <div class="split-check-layer"><div class="hw-part ${checkData[hwKey]?'active':''}"></div><div class="rev-part ${checkData[revKey]?'active':''}"></div></div>
-                    <div class="ev-content"><b>${ev.n}</b><span>${ev.s}~${ev.e}</span></div>`;
-                
-                // 클릭 시 즉각 반응하도록 핸들러 등록
-                evDiv.onclick = (e) => {
-                    if(!isEditMode) return;
-                    const r = evDiv.getBoundingClientRect();
-                    const x = e.clientX - r.left;
-                    toggleCheck(dateStr, i, x < r.width/2 ? 'hw' : 'rev');
-                };
-                
-                // 문자열 대신 노드를 직접 추가할 수 없으므로 우선은 이 방식으로 둡니다. 
-                // renderCalendar의 성능을 위해 innerHTML을 사용하는 기존 방식을 유지하면서
-                // 각 요소에 onclick 속성을 인라인으로 심어 즉각 실행되게 합니다.
                 html += `
                     <div class="cal-ev ${ev.c} ${ev.p||''}" style="top:${topPos}px; height:${heightVal}px;" 
                          onclick="if(isEditMode) { const r=this.getBoundingClientRect(); const x=event.clientX-r.left; toggleCheck('${dateStr}',${i}, x<r.width/2?'hw':'rev'); }">
@@ -367,36 +345,85 @@
     function updateUrgentList() {
         const listEl = document.getElementById('urgentList');
         listEl.innerHTML = '';
-        const now = new Date(); const urgentItems = [];
-        const allDates = Object.keys(fixedFullSchedule).sort((a,b) => {
-            const [y1,m1,d1] = a.split('-').map(Number); const [y2,m2,d2] = b.split('-').map(Number);
-            return new Date(y1, m1-1, d1) - new Date(y2, m2-1, d2);
-        });
-        for(let i=0; i<7; i++) {
-            const targetDate = new Date();
-            targetDate.setDate(now.getDate() + i);
-            const dateStr = `${targetDate.getFullYear()}-${targetDate.getMonth()+1}-${targetDate.getDate()}`;
-            const dayClasses = fixedFullSchedule[dateStr];
-            if(dayClasses) {
-                dayClasses.forEach(cls => {
-                    if(cls.c === 'hldy') return;
-                    let prevClassInfo = null;
-                    for(let j = allDates.indexOf(dateStr) - 1; j >= 0; j--) {
-                        const pastDate = allDates[j]; const pastClasses = fixedFullSchedule[pastDate];
-                        const foundIdx = pastClasses.findIndex(c => c.n === cls.n);
-                        if(foundIdx !== -1) { prevClassInfo = { date: pastDate, idx: foundIdx }; break; }
-                    }
-                    if(prevClassInfo) {
-                        const checkKey = `${prevClassInfo.date}_${prevClassInfo.idx}_hw`;
-                        if(!checkData[checkKey] && !urgentItems.some(item => item.name === cls.n)) {
-                            urgentItems.push({ name: cls.n, targetDate: dateStr, prevDate: prevClassInfo.date });
-                        }
-                    }
-                });
+        const now = new Date();
+        const futureClasses = [];
+
+        // 1. 모든 미래 수업 정보를 수집 (현재 시각 이후에 종료되는 수업)
+        for (const dateKey in fixedFullSchedule) {
+            fixedFullSchedule[dateKey].forEach((cls, idx) => {
+                if (cls.c === 'hldy') return;
+                const [eh, em] = cls.e.split(':').map(Number);
+                const classEndTime = new Date(dateKey);
+                classEndTime.setHours(eh, em, 0, 0);
+
+                if (classEndTime > now) {
+                    futureClasses.push({ ...cls, date: dateKey, idx, endTime: classEndTime });
+                }
+            });
+        }
+
+        // 2. 시간 순으로 정렬
+        futureClasses.sort((a, b) => a.endTime - b.endTime);
+
+        // 3. 과목별로 '가장 가까운 수업' 하나씩만 추출
+        const uniqueNearClasses = [];
+        const seenNames = new Set();
+        for (const cls of futureClasses) {
+            if (!seenNames.has(cls.n)) {
+                uniqueNearClasses.push(cls);
+                seenNames.add(cls.n);
             }
         }
-        if(urgentItems.length === 0) { listEl.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">밀린 숙제가 없습니다! 👍</p>'; }
-        else { urgentItems.forEach(item => { const div = document.createElement('div'); div.className = 'urgent-item'; div.innerHTML = `<h3>${item.name}</h3><p>📅 다음 수업: <b>${item.targetDate.split('-')[1]}월 ${item.targetDate.split('-')[2]}일</b></p><p style="color:#d32f2f; font-weight:bold; margin-top:5px;">⚠️ ${item.prevDate.split('-')[1]}/${item.prevDate.split('-')[2]} 숙제 미완료</p>`; listEl.appendChild(div); }); }
+
+        // 4. 추출된 수업들 중 숙제가 완료되지 않은 경우에만 '직전 수업'을 찾아 표시
+        const urgentItems = [];
+        const allDates = Object.keys(fixedFullSchedule).sort((a, b) => new Date(a) - new Date(b));
+
+        uniqueNearClasses.forEach(nextCls => {
+            let prevClassInfo = null;
+            // 해당 과목의 직전 수업 찾기
+            const dateIdx = allDates.indexOf(nextCls.date);
+            for (let j = dateIdx; j >= 0; j--) {
+                const checkDate = allDates[j];
+                const classesOnThatDay = fixedFullSchedule[checkDate];
+                // 'nextCls' 본인이 아닌 그 이전 인덱스부터 검색 (같은 날 여러 수업 대비)
+                const startIdx = (checkDate === nextCls.date) ? nextCls.idx - 1 : classesOnThatDay.length - 1;
+                
+                for (let k = startIdx; k >= 0; k--) {
+                    if (classesOnThatDay[k].n === nextCls.n) {
+                        prevClassInfo = { date: checkDate, idx: k };
+                        break;
+                    }
+                }
+                if (prevClassInfo) break;
+            }
+
+            if (prevClassInfo) {
+                const hwCheckKey = `${prevClassInfo.date}_${prevClassInfo.idx}_hw`;
+                if (!checkData[hwCheckKey]) {
+                    urgentItems.push({
+                        name: nextCls.n,
+                        targetDate: nextCls.date,
+                        prevDate: prevClassInfo.date
+                    });
+                }
+            }
+        });
+
+        if (urgentItems.length === 0) {
+            listEl.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">밀린 숙제가 없습니다! 👍</p>';
+        } else {
+            urgentItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'urgent-item';
+                div.innerHTML = `
+                    <h3>${item.name}</h3>
+                    <p>📅 다음 수업: <b>${item.targetDate.split('-')[1]}월 ${item.targetDate.split('-')[2]}일</b></p>
+                    <p style="color:#d32f2f; font-weight:bold; margin-top:5px;">⚠️ ${item.prevDate.split('-')[1]}/${item.prevDate.split('-')[2]} 숙제 미완료</p>
+                `;
+                listEl.appendChild(div);
+            });
+        }
     }
 
     function toggleEditMode() { isEditMode = !isEditMode; const btn = document.getElementById('editToggleBtn'); btn.innerText = isEditMode ? '✅ 수정 완료' : '🛠️ 수정 모드 시작'; document.getElementById('schedule-section').classList.toggle('edit-active', isEditMode); }
